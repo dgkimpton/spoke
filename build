@@ -1,0 +1,1 @@
+cargo watch -x 'llvm-cov --ignore-filename-regex src/lib.rs --lcov --output-path ./target/lcov.info ' -w src

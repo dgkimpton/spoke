@@ -7,5 +7,11 @@ license = "MIT"
 authors = ["Duncan Kimpton"]
 repository = "https://github.com/dgkimpton/spoke/tree/main"
 
+[lib]
+proc-macro = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)'] }
 
 [dependencies]
+proc-macro2 = { version = "1", features=["span-locations", "proc-macro"]}
