@@ -1,0 +1,11 @@
+[package]
+name = "spoke"
+version = "0.0.1"
+edition = "2024"
+description = "[coming soon] Simplified unit testing for Rust."
+license = "MIT"
+authors = ["Duncan Kimpton"]
+repository = "https://github.com/dgkimpton/spoke/tree/main"
+
+
+[dependencies]
