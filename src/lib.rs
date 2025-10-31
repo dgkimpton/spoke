@@ -91,3 +91,6 @@ mod spoke;
 pub fn test(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     crate::spoke::generate_tests(proc_macro2::TokenStream::from(input)).into()
 }
+
+#[cfg(test)]
+mod unit_tests;
