@@ -38,8 +38,9 @@ jobs:
 
       - name: coverage report
         if: matrix.toolchain == 'stable'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/lcov.info
           flags: unittests
           fail_ci_if_error: true
