@@ -1,0 +1,46 @@
+name: build & test
+
+on:
+  push:
+  pull_request:
+
+env: 
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: spoke::test-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - run: cargo build --verbose
+      - run: cargo test --verbose
+      
+      - name: coverage install
+        if: matrix.toolchain == 'stable'
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --locked
+
+      - name: coverage generate
+        if: matrix.toolchain == 'stable'
+        run: |
+          cargo llvm-cov \
+            --ignore-filename-regex 'src/lib\.rs' \
+            --lcov --output-path ./target/lcov.info
+
+      - name: coverage report
+        if: matrix.toolchain == 'stable'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./target/lcov.info
+          flags: unittests
+          fail_ci_if_error: true

@@ -1,0 +1,11 @@
+{
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.watchOnActivate": true,
+  "coverage-gutters.coverageFileNames": [
+    "target/lcov.info"
+  ],
+  "files.exclude": {
+    "target": true
+  },
+}
