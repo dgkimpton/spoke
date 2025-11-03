@@ -1,3 +1,6 @@
+mod error;
+mod span_source;
+mod name;
 mod spoke;
 
 /// # spoke::test!

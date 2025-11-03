@@ -15,3 +15,4 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)
 
 [dependencies]
 proc-macro2 = { version = "1", features=["span-locations", "proc-macro"]}
+unicode-ident = {version = "1"}

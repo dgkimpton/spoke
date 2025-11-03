@@ -16,6 +16,7 @@ name = "spoke"
 version = "0.0.1"
 dependencies = [
  "proc-macro2",
+ "unicode-ident",
 ]
 
 [[package]]
