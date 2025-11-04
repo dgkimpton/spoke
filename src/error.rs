@@ -1,4 +1,6 @@
-use crate::span_source::*;
+use proc_macro2::TokenTree;
+
+use crate::{span_source::*, token_helpers::*};
 
 pub(crate) type CompileResult<T> = Result<T, CompileError>;
 
@@ -26,6 +28,15 @@ impl CompileError {
         msg: impl Into<String>,
     ) -> Result<TSuccess, Self> {
         Err(Self::new(span.span(), msg.into()))
+    }
+
+    pub(crate) fn generate_tokens(self) -> Vec<TokenTree> {
+        vec![
+            ident("compile_error", self.span),
+            punct('!'),
+            parenthesised(vec![lit_string(self.msg)]),
+            punct(';'),
+        ]
     }
 }
 

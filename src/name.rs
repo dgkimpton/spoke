@@ -1,15 +1,19 @@
 use proc_macro2::Span;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{error::{CompileError, CompileResult}, span_source::SpanSource};
+use crate::{
+    error::{CompileError, CompileResult},
+    span_source::SpanSource,
+};
 
 #[derive(Clone)]
 pub(crate) struct NameFactory(Rc<RefCell<Factory>>);
 
 impl NameFactory {
     pub(crate) fn new() -> Self {
-        Self (Rc::new(RefCell::new(Factory::new())))
+        Self(Rc::new(RefCell::new(Factory::new())))
     }
+
     pub(crate) fn make_factory(&self, title: String) -> Self {
         Self(Rc::new(RefCell::new(Factory::new_with_parent(
             self.clone(),
@@ -21,12 +25,16 @@ impl NameFactory {
         self.0.borrow_mut().make_name(sp, text, self.clone())
     }
 
-    fn assemble_name(
-        &self,
-        sp: &impl SpanSource,
-        text: &str,
-        sep: &str,
-    ) -> CompileResult<String> {
+    pub(crate) fn qualified_name(&self, sp: &impl SpanSource) -> CompileResult<String> {
+        let imp = self.0.borrow();
+        self.assemble_name(sp, imp.title.as_ref().unwrap(), " ⟶ ")
+    }
+
+    fn assemble_name(&self, sp: &impl SpanSource, text: &str, sep: &str) -> CompileResult<String> {
+        if text.is_empty() {
+            return CompileError::err(sp, "test segment names cannot be empty");
+        }
+
         let imp = self.0.borrow();
 
         if !imp.has_parent() {
@@ -54,6 +62,10 @@ impl NameFactory {
 
     fn max_index(&self) -> usize {
         self.0.as_ref().borrow().provided_name_count
+    }
+
+    pub(crate) fn has_parent(&self) -> bool {
+        self.0.as_ref().borrow().has_parent()
     }
 }
 

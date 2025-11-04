@@ -14,6 +14,32 @@ mod tests {
     }
 
     #[test]
+    fn empty_names_are_rejected() {
+        let factory = NameFactory::new();
+        let name = factory.make_name(&Span::call_site(), "".into());
+
+        assert!(name.function_name().is_err())
+    }
+    #[test]
+    fn empty_parent_names_are_rejected() {
+        let factory = NameFactory::new();
+        let name = factory.make_name(&Span::call_site(), "".into());
+        let child_factory = name.make_factory();
+        let child = child_factory.make_name(&Span::call_site(), "child".into());
+
+        assert!(child.function_name().is_err())
+    }
+    #[test]
+    fn empty_child_names_are_rejected() {
+        let factory = NameFactory::new();
+        let name = factory.make_name(&Span::call_site(), "parent".into());
+        let child_factory = name.make_factory();
+        let child = child_factory.make_name(&Span::call_site(), "".into());
+
+        assert!(child.function_name().is_err())
+    }
+
+    #[test]
     fn names_collapse_whitesspace_to_underscore() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello world".into());
