@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod tests {
 
-    use proc_macro2::{Delimiter, TokenTree};
-
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{name::*, suite::TestSuite, token_helpers::braced, unit_tests::testing_helpers::*};
+    use crate::{name::*, suite::TestSuite, unit_tests::testing_helpers::*};
 
     #[test]
     fn an_empty_input_produces_no_output() {

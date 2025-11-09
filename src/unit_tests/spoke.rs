@@ -16,9 +16,9 @@ mod tests {
     }
     
     #[test]
-    fn a_broken_input_produces_an_errpr() {
+    fn a_broken_input_produces_an_error() {
         let input : TokenStream = "$$".parse().expect("tokens");
-        let expected  : TokenStream= "compile_error ! (\"expected name of the testcase :: `expected a string literal (e.g. \\\"Ferris\\\"), but found a punctuation character`\") ;".parse().expect("tokens");
+        let expected  : TokenStream= "compile_error ! (\"in SUITE  :: error parsing tests : expected name of the testcase :: `expected a string literal (e.g. \\\"Ferris\\\"), but found a punctuation character` :: $\") ;".parse().expect("tokens");
         let result = generate(input);
         assert_eq!(
             expected.to_string(),

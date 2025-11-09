@@ -27,7 +27,11 @@ impl NameFactory {
 
     pub(crate) fn qualified_name(&self, sp: &impl SpanSource) -> CompileResult<String> {
         let imp = self.0.borrow();
-        self.assemble_name(sp, imp.title.as_ref().unwrap(), " ⟶ ")
+        if let Some(ref title) = imp.title {
+            self.assemble_name(sp, title, " ⟶ ")
+        } else {
+            self.assemble_name(sp, "SUITE", " ⟶ ")
+        }
     }
 
     fn assemble_name(&self, sp: &impl SpanSource, text: &str, sep: &str) -> CompileResult<String> {

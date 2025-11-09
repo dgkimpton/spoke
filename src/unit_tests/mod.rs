@@ -4,3 +4,4 @@ mod suite;
 mod signature;
 mod body;
 mod spoke;
+mod asserts;

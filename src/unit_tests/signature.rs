@@ -47,14 +47,14 @@ mod tests {
         assert_eq!(
             CompileError::err(
                 &sp,
-                "expected name of the testcase :: `expected a string literal (e.g. \"Ferris\"), but found an identifier`"
+                "in SUITE  :: error parsing tests : expected name of the testcase :: `expected a string literal (e.g. \"Ferris\"), but found an identifier` :: test"
             ),
             test.accept_token(&ident("test", sp))
         );
     }
 
     #[test]
-    fn test_signature_generation_fails_if_generated_with_no_body() {
+    fn test_signature_generation_fails_if_generated_with_no_body_and_no_assert() {
         parse_valid(Input(
             r##"
                 "test"
@@ -63,27 +63,9 @@ mod tests {
         .generate_tokens()
         .matches_failure(Expected(
             r##"
-                compile_error!("test case specified without a body at `test`. expected a test body in braces");
+                compile_error!("test case specified without a body at `test`. expected a test body in braces or a valid assertion");
             "##,
         ));
-    }
-
-    #[test]
-    fn test_signature_generation_fails_if_generated_with_wrong_tokens_where_body_expected() {
-        let mut test = parse_valid(Input(
-            r##"
-        "test"
-        "##,
-        ));
-
-        let sp = Span::call_site();
-        assert_eq!(
-            CompileError::err(
-                &sp,
-                "expected to find the body of the test in braces, but :: got `test`"
-            ),
-            test.accept_token(&ident("test", sp))
-        );
     }
 
     #[test]

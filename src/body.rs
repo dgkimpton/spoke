@@ -27,7 +27,7 @@ impl TestBody {
         parent_code: Vec<TokenTree>,
     ) -> Self {
         Self {
-            state:TestBodyState::Code,
+            state: TestBodyState::Code,
             name,
             child_name_factory,
             code: parent_code,

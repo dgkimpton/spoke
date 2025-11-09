@@ -6,6 +6,7 @@ mod suite;
 mod signature;
 mod body;
 mod spoke;
+mod asserts;
 
 /// # spoke::test!
 ///
@@ -26,16 +27,16 @@ mod spoke;
 ///         let mut v = Vec::<u8>::new();
 ///
 ///         //todo: $"starts empty" v.is_empty() $is_true;
-///         //todo: $"has length zero" v.len() $eq 0;
-///         //todo: $"returns nothing if popped" v.pop() $eq None;
+///         $"has length zero" v.len() $eq 0;
+///         $"returns nothing if popped" v.pop() $eq None;
 ///
 ///         $"when pushed to" {
 ///
 ///             v.push(8);
 ///
 ///             //todo: $"is no longer empty" v.empty() $is_false;
-///             //todo: $"has length one" v.len() $eq 1;
-///             //todo: $"returns the item when popped" v.pop() $eq Some(8);
+///             $"has length one" v.len() $eq 1;
+///             $"returns the item when popped" v.pop() $eq Some(8);
 ///         }
 ///     }
 /// }
