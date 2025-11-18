@@ -4,7 +4,7 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{name::*, signature::*, unit_tests::testing_helpers::*};
+    use crate::{consumer::TokenStreamExt, name::*, signature::*, unit_tests::testing_helpers::*};
 
     #[test]
     fn can_place_an_assertion_isntead_of_a_body() {
@@ -13,8 +13,8 @@ mod tests {
                 "test" true $eq false;
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[test] 
                 fn test() {
@@ -24,11 +24,9 @@ mod tests {
         ));
     }
     
-    fn parse_valid(input: Input) -> TestSignature {
-        let mut test = TestSignature::new(proc_macro2::Span::call_site(), NameFactory::new(), []);
-        for tok in input.stream().expect("valid token stream") {
-            assert_eq!(Ok(true), test.accept_token(&tok));
-        }
-        test
+    fn parse_valid(input: Input) -> Signature {
+        let test = Signature::new(&proc_macro2::Span::call_site(), NameFactory::new());
+        let (result, _error) = input.stream().process_into(test);
+        result
     }
 }

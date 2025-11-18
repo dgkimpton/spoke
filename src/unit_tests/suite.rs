@@ -4,7 +4,7 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{name::*, suite::TestSuite, unit_tests::testing_helpers::*};
+    use crate::{consumer::TokenStreamExt, name::*, suite::Suite, unit_tests::testing_helpers::*};
 
     #[test]
     fn an_empty_input_produces_no_output() {
@@ -12,8 +12,8 @@ mod tests {
             r##"
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
             "##,
         ));
@@ -26,13 +26,13 @@ mod tests {
                $"my test"{}
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[cfg(test)]
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
-                mod combitests {
+                mod spoketest {
                     #[test] fn my_test() { }
                 }
             "##,
@@ -48,13 +48,13 @@ mod tests {
                $"3rd test"{}
             "##,
         ))        
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[cfg(test)]
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
-                mod combitests {
+                mod spoketest {
                     #[test] fn my_test() { }
                     #[test] fn another_test() { }
                     #[test] fn t3rd_test() { }
@@ -78,13 +78,13 @@ mod tests {
                $"3rd test"{}
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[cfg(test)]
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
-                mod combitests {        
+                mod spoketest {        
                     use mycrate::*;
                     use crate::deeply::nested::{
                         my_first_function,
@@ -118,13 +118,13 @@ mod tests {
                 use some::*;
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[cfg(test)]
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
-                mod combitests {        
+                mod spoketest {        
                     use mycrate::*;
                     use crate::deeply::nested::{
                         my_first_function,
@@ -148,28 +148,13 @@ mod tests {
         let input = Input(
             "$"
         );
-        assert!(crate::suite::process(input.stream().expect("valid token stream")).is_err());
+        let (_result, error) = input.stream().process_into(Suite::new(NameFactory::new()));
+        assert!(error.is_some());
     }
 
-    #[test]
-    fn an_invalid_test_generates_a_compile_error() {
-        let input = Input(
-            "$"
-        );
-        let err = crate::suite::process(input.stream().expect("valid token stream"));
-
-        err.matches_failure(Expected(
-            r##"
-            compile_error!("expected a test name in quotes") ;
-            "##))
-    }
-    
-    fn parse_valid(input: Input) -> TestSuite {
-
-        let mut test = TestSuite::new(NameFactory::new());
-        for tok in input.stream().expect("valid token stream") {
-            assert_eq!(Ok(true), test.accept_token(&tok));
-        }
-        test
+    fn parse_valid(input: Input) -> Suite {
+        let test = Suite::new(NameFactory::new());
+        let (result, _error) = input.stream().process_into(test);
+        result
     }
 }

@@ -19,4 +19,4 @@ impl SpanSource for Span {
     }
 }
 
-impl_span_source_for!(Ident, Literal, Punct, Group, TokenTree,);
+impl_span_source_for!(Ident, Literal, Punct, Group, TokenTree);

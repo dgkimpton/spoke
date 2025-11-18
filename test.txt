@@ -1,0 +1,22 @@
+
+
+spoke::test! $<suite> { (<preamble>, $, <signature>)* }
+<preamble> := <code>
+<code> := ^[$]
+<possible_expression> := <expression> | ($, <error>)
+<expression> := ^[$;]
+
+<test> := <code>, $, <signature>
+
+<signature> := <named> | <error>
+<named> := "name" , <content>
+<content> :=  {body} | <assert>
+
+<assert> := <left>, $, <operand>
+<left> := <expression>
+<operand> := ("eq" | "ne" | <error>), <right>
+<right> := <possible_expression>*, ';'
+
+<body> := (<code> , $, <signature>)*
+
+NEXT: Closing open rules

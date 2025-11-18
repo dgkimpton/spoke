@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
 
+    use proc_macro2::Span;
+
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{name::*, body::TestBody, unit_tests::testing_helpers::*};
+    use crate::{body::Body, code_block::CodeBlock, name::*, unit_tests::testing_helpers::*};
 
     #[test]
     fn keeps_basic_code() {
@@ -15,8 +17,8 @@ mod tests {
                 assert_eq!(x,y);
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
             # [test] fn a_test () { 
                 let x = 5;
@@ -37,8 +39,8 @@ mod tests {
                 }
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
             #[test] 
             fn a_test_inner_spec_1() {
@@ -52,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn nested_tests_keep_their_respective_bodies(){
+    fn nested_tests_keep_their_respective_bodies() {
         parse_valid(Input(
             r##"
                 $"inner spec 1"{
@@ -67,8 +69,8 @@ mod tests {
                 }
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[test] 
                 fn a_test_inner_spec_1() {
@@ -105,8 +107,8 @@ mod tests {
                 let n = 7;
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[test] 
                 fn a_test_inner_spec_1() {
@@ -161,8 +163,8 @@ mod tests {
             }
             "##,
         ))
-        .generate_tokens()
-        .matches_ok(Expected(
+        .generate()
+        .matches(Expected(
             r##"
                 #[test] 
                 fn a_test_level_inner_spec_1_2nd_3rda() {
@@ -197,16 +199,17 @@ mod tests {
         ));
     }
 
-    fn parse_valid(input: Input) -> TestBody {
-        let sp = proc_macro2::Span::call_site();
-        let nf = NameFactory::new();
-        let name = nf.make_name(&sp, "a test".to_string());
-        let child_nf = name.make_factory();
+    fn parse_valid(input: Input) -> Body {
+        let (result, error) = Body::new_from(
+            input.stream(),
+            NameFactory::new().make_name(&Span::call_site(), "a_test".to_string()),
+            CodeBlock::new(),
+        );
 
-        let mut test = TestBody::new(name, child_nf,vec![]);
-        for tok in input.stream().expect("valid token stream") {
-            assert_eq!(Ok(true), test.accept_token(&tok));
+        if let Some(error) = error {
+            panic!("{}", error)
         }
-        test
+
+        result
     }
 }

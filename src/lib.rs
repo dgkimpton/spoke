@@ -1,12 +1,24 @@
 mod error;
+mod rule;
+mod consumer;
+mod generator;
 mod span_source;
 mod token_helpers;
 mod name;
 mod suite;
 mod signature;
+mod named;
 mod body;
+mod content;
 mod spoke;
 mod asserts;
+mod code_block;
+mod operand;
+mod equality;
+mod token;
+mod token_is;
+mod right;
+mod rules;
 
 /// # spoke::test!
 ///

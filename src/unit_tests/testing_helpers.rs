@@ -1,47 +1,43 @@
-use crate::{error::*, token_helpers::*};
+use proc_macro2::TokenStream;
+
+use crate::{ generator::{IntoVecTokens, TokenGenerator}, token_helpers::*};
+
+pub(crate) struct TestResult(Vec<proc_macro2::TokenTree>);
+
+pub(crate) trait GenerateTestTokens {
+    fn generate(&mut self) -> TestResult;
+}
+
+impl<T: TokenGenerator> GenerateTestTokens for T {
+    fn generate(&mut self) -> TestResult {
+        TestResult(self.into_vec())
+    }
+}
 
 pub(crate) trait TokenMatcher {
-    fn matches_ok(self, expected: Expected);
-    fn matches_failure(self, expected: Expected);
+    fn matches(self, expected: Expected);
 }
 
-impl TokenMatcher for CompileResult<Vec<proc_macro2::TokenTree>> {
-    fn matches_ok(self, expected: Expected) {
-        matches_tokens(self.ok().expect("parsed ok"), expected)
-    }
-
-    fn matches_failure(self, expected: Expected) {
-        matches_tokens(
-            self.err()
-                .expect("parsed with compile error")
-                .generate_tokens(),
-            expected,
-        )
+impl TokenMatcher for TestResult {
+    fn matches(self, expected: Expected) {
+        matches_tokens(self.0, expected)
     }
 }
-impl TokenMatcher for CompileResult<proc_macro2::TokenStream> {
-    fn matches_ok(self, expected: Expected) {
-        matches_stream(self.ok().expect("parsed ok"), expected)
-    }
 
-    fn matches_failure(self, expected: Expected) {
-        matches_tokens(
-            self.err()
-                .expect("parsed with compile error")
-                .generate_tokens(),
-            expected,
-        )
+impl TokenMatcher for TokenStream {
+    fn matches(self, expected: Expected) {
+        matches_stream(self, expected);
     }
 }
 
 pub(crate) struct Input<'a>(pub (crate) &'a str);
 impl<'a> Input<'a> {
-    pub(crate) fn stream(&self) -> CompileResult<proc_macro2::TokenStream> {
-        Ok(self
+    pub(crate) fn stream(&self) -> TokenStream {
+        self
             .0
             .parse::<proc_macro2::TokenStream>()
             .inspect_err(|e| eprintln!("ERROR: {e}"))
-            .expect("the input string represents a valid input stream of tokens"))
+            .expect("the input string represents a valid input stream of tokens")
     }
 }
 

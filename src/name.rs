@@ -1,10 +1,7 @@
 use proc_macro2::Span;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{
-    error::{CompileError, CompileResult},
-    span_source::SpanSource,
-};
+use crate::span_source::SpanSource;
 
 #[derive(Clone)]
 pub(crate) struct NameFactory(Rc<RefCell<Factory>>);
@@ -21,11 +18,18 @@ impl NameFactory {
         ))))
     }
 
+    pub(crate) fn make_name_from_str(&self, sp: &impl SpanSource, text: &str) -> Name {
+        self.0
+            .borrow_mut()
+            .make_name(sp, text.to_string(), self.clone())
+    }
+
+    #[allow(unused)]
     pub(crate) fn make_name(&self, sp: &impl SpanSource, text: String) -> Name {
         self.0.borrow_mut().make_name(sp, text, self.clone())
     }
 
-    pub(crate) fn qualified_name(&self, sp: &impl SpanSource) -> CompileResult<String> {
+    pub(crate) fn qualified_name(&self, sp: &impl SpanSource) -> String {
         let imp = self.0.borrow();
         if let Some(ref title) = imp.title {
             self.assemble_name(sp, title, " ⟶ ")
@@ -34,40 +38,33 @@ impl NameFactory {
         }
     }
 
-    fn assemble_name(&self, sp: &impl SpanSource, text: &str, sep: &str) -> CompileResult<String> {
-        if text.is_empty() {
-            return CompileError::err(sp, "test segment names cannot be empty");
-        }
-
+    fn assemble_name(&self, sp: &impl SpanSource, text: &str, sep: &str) -> String {
         let imp = self.0.borrow();
 
         if !imp.has_parent() {
             if let Some(ref title) = imp.title {
-                if title.is_empty() {
-                    return CompileError::err(sp, "test segment names cannot be empty");
-                } else {
-                    return Ok(format!("{}{}{}", title, sep, text));
-                }
+                return format!("{}{}{}", title, sep, text);
             }
 
-            return Ok(text.into());
+            return text.into();
         }
 
-        Ok(format!(
+        format!(
             "{}{}{}",
             imp.parent
                 .as_ref()
                 .unwrap()
-                .assemble_name(sp, imp.title.as_ref().unwrap(), sep)?,
+                .assemble_name(sp, imp.title.as_ref().unwrap(), sep),
             sep,
             text
-        ))
+        )
     }
 
     fn max_index(&self) -> usize {
         self.0.as_ref().borrow().provided_name_count
     }
 
+    #[allow(unused)]
     pub(crate) fn has_parent(&self) -> bool {
         self.0.as_ref().borrow().has_parent()
     }
@@ -146,17 +143,17 @@ impl Name {
         self.factory.make_factory(self.text.clone())
     }
 
-    pub(crate) fn function_name(&self) -> CompileResult<String> {
-        Ok(sanitise(
+    pub(crate) fn function_name(&self) -> String {
+        sanitise(
             self.factory
-                .assemble_name(self.span(), &self.text, " ")?
+                .assemble_name(self.span(), &self.text, " ")
                 .as_str(),
             self.index,
             self.factory.max_index(),
-        ))
+        )
     }
 
-    pub(crate) fn full_name(&self) -> CompileResult<String> {
+    pub(crate) fn full_name(&self) -> String {
         self.factory.assemble_name(self.span(), &self.text, " ⟶ ")
     }
 }

@@ -10,34 +10,9 @@ mod tests {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello".into());
 
-        assert_eq!("hello", name.function_name().expect("valid test name"))
+        assert_eq!("hello", name.function_name())
     }
 
-    #[test]
-    fn empty_names_are_rejected() {
-        let factory = NameFactory::new();
-        let name = factory.make_name(&Span::call_site(), "".into());
-
-        assert!(name.function_name().is_err())
-    }
-    #[test]
-    fn empty_parent_names_are_rejected() {
-        let factory = NameFactory::new();
-        let name = factory.make_name(&Span::call_site(), "".into());
-        let child_factory = name.make_factory();
-        let child = child_factory.make_name(&Span::call_site(), "child".into());
-
-        assert!(child.function_name().is_err())
-    }
-    #[test]
-    fn empty_child_names_are_rejected() {
-        let factory = NameFactory::new();
-        let name = factory.make_name(&Span::call_site(), "parent".into());
-        let child_factory = name.make_factory();
-        let child = child_factory.make_name(&Span::call_site(), "".into());
-
-        assert!(child.function_name().is_err())
-    }
 
     #[test]
     fn names_collapse_whitesspace_to_underscore() {
@@ -45,7 +20,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello world".into());
         assert_eq!(
             "hello_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -55,7 +30,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello    world".into());
         assert_eq!(
             "hello_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -65,7 +40,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello,world".into());
         assert_eq!(
             "hello_comma_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -75,61 +50,67 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello.world".into());
         assert_eq!(
             "hello_dot_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn double_equals_collapses_to_equals_equals() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello==world".into());
         assert_eq!(
             "hello_equals_equals_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn double_equals_collapses_to_equals_equals_additional_spaces_are_collapsed() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello == world".into());
         assert_eq!(
             "hello_equals_equals_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn single_equals_collapses_to_equals() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello=world".into());
         assert_eq!(
             "hello_equals_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn single_equals_collapses_to_equals_additional_spaces_are_collapsed() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello = world".into());
         assert_eq!(
             "hello_equals_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn ampersand_collapses_to_ampersand() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello&world".into());
         assert_eq!(
             "hello_ampersand_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn double_ampersand_collapses_to_ampersand_ampersand() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello&&world".into());
         assert_eq!(
             "hello_ampersand_ampersand_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -139,25 +120,27 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello [] world".into());
         assert_eq!(
             "hello_brackets_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn left_bracket_collapses_to_open_bracket() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello [ world".into());
         assert_eq!(
             "hello_open_bracket_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn right_bracket_collapses_to_close_bracket() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello ] world".into());
         assert_eq!(
             "hello_close_bracket_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -167,25 +150,27 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello () world".into());
         assert_eq!(
             "hello_parens_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn left_parentesis_collapses_to_open_paren() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello ( world".into());
         assert_eq!(
             "hello_open_paren_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn right_parentesis_collapses_to_close_paren() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello ) world".into());
         assert_eq!(
             "hello_close_paren_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -195,25 +180,27 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello {} world".into());
         assert_eq!(
             "hello_braces_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn left_brace_collapses_to_open_brace() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello { world".into());
         assert_eq!(
             "hello_open_brace_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn right_brace_collapses_to_close_brace() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello } world".into());
         assert_eq!(
             "hello_close_brace_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -223,25 +210,27 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello <> world".into());
         assert_eq!(
             "hello_angle_brackets_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn left_angle_bracket_collapses_to_open_angle_bracket() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello < world".into());
         assert_eq!(
             "hello_open_angle_bracket_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn right_angle_bracket_collapses_to_close_angle_bracket() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello > world".into());
         assert_eq!(
             "hello_close_angle_bracket_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -251,34 +240,37 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello \"\" world".into());
         assert_eq!(
             "hello_quotes_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn single_double_quotes_collapses_to_quote() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello \" world".into());
         assert_eq!(
             "hello_quote_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn double_single_quotes_collapses_to_single_quotes() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello '' world".into());
         assert_eq!(
             "hello_single_quotes_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn single_single_quotes_collapses_to_single_quote() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello ' world".into());
         assert_eq!(
             "hello_single_quote_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -288,7 +280,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello ! world".into());
         assert_eq!(
             "hello_exclamation_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -298,7 +290,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello ? world".into());
         assert_eq!(
             "hello_question_mark_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -308,7 +300,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello @ world".into());
         assert_eq!(
             "hello_at_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -318,7 +310,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello : world".into());
         assert_eq!(
             "hello_colon_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -328,7 +320,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello ; world".into());
         assert_eq!(
             "hello_semicolon_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -338,16 +330,17 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello % world".into());
         assert_eq!(
             "hello_percent_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn hat_collapses_to_hat() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello ^ world".into());
         assert_eq!(
             "hello_hat_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -357,7 +350,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello * world".into());
         assert_eq!(
             "hello_star_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -367,61 +360,67 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello / world".into());
         assert_eq!(
             "hello_slash_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn back_slash_collapses_to_backslash() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello \\ world".into());
         assert_eq!(
             "hello_backslash_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn plus_collapses_to_plus() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello + world".into());
         assert_eq!(
             "hello_plus_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn minus_collapses_to_minus() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello - world".into());
         assert_eq!(
             "hello_minus_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn hash_collapses_to_hash() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello # world".into());
         assert_eq!(
             "hello_hash_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn vertical_pipe_collapses_to_pipe() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello | world".into());
         assert_eq!(
             "hello_pipe_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn dollar_sign_collapses_to_dollars() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello $ world".into());
         assert_eq!(
             "hello_dollars_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -431,7 +430,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello ` world".into());
         assert_eq!(
             "hello_backtick_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -441,7 +440,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello ~ world".into());
         assert_eq!(
             "hello_tilde_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -451,7 +450,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello 京 world".into());
         assert_eq!(
             "hello_京_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -461,7 +460,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello 0 world".into());
         assert_eq!(
             "hello_0_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -471,25 +470,27 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "hello world       ".into());
         assert_eq!(
             "hello_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+
     #[test]
     fn names_ending_in_underscore_end_in_underscore() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "hello world       _".into());
         assert_eq!(
             "hello_world_",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
+    
     #[test]
     fn whitspace_at_the_start_is_discarded() {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "    hello world".into());
         assert_eq!(
             "hello_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -499,7 +500,7 @@ mod tests {
         let name = factory.make_name(&Span::call_site(), "    0hello world".into());
         assert_eq!(
             "t0hello_world",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -514,7 +515,7 @@ mod tests {
         let child_factory = name.make_factory();
         let child = child_factory.make_name(&Span::call_site(), "first".into());
 
-        assert_eq!("how_first", child.function_name().expect("valid test name"))
+        assert_eq!("how_first", child.function_name())
     }
 
     #[test]
@@ -530,7 +531,7 @@ mod tests {
 
         assert_eq!(
             "melody_how_are_you",
-            c.function_name().expect("valid test name")
+            c.function_name()
         )
     }
 
@@ -547,7 +548,7 @@ mod tests {
 
         assert_eq!(
             "t9melody_how_0_1",
-            c.function_name().expect("valid test name")
+            c.function_name()
         )
     }
 
@@ -564,7 +565,7 @@ mod tests {
 
         assert_eq!(
             "melody__the__hen",
-            c.function_name().expect("valid test name")
+            c.function_name()
         )
     }
 
@@ -573,7 +574,7 @@ mod tests {
         let factory = NameFactory::new();
         let name = factory.make_name(&Span::call_site(), "melody, how".into());
 
-        assert_eq!("melody, how", name.full_name().expect("valid test name"))
+        assert_eq!("melody, how", name.full_name())
     }
 
     #[test]
@@ -585,7 +586,7 @@ mod tests {
 
         assert_eq!(
             "melody, how ⟶ first child",
-            child.full_name().expect("valid test name")
+            child.full_name()
         )
     }
 
@@ -602,7 +603,7 @@ mod tests {
 
         assert_eq!(
             "melody, how ⟶ are ⟶ you",
-            c.full_name().expect("valid test name")
+            c.full_name()
         );
     }
 
@@ -615,7 +616,7 @@ mod tests {
         );
         assert_eq!(
             "let_b_equals_a_child_dot_make_name_open_paren_ampersand_Span_colon_colon_call_site_parens_comma_quote_are_quote_dot_into_parens_close_paren_semicolon",
-            name.function_name().expect("valid test name")
+            name.function_name()
         )
     }
 
@@ -628,12 +629,12 @@ mod tests {
         
         assert_eq!(
              "The_quiet_rhythm_of_the_morning_began_with_the_low_hum_of_the_city_breathing_itself_awake_comma_lights_flickering_behind_curtains_comma_buses_sighing_as_they_eased_to_a_stop_comma_and_people_stepping_carefully_into_the_chill_air_that_promised_warmth_later_in_the_day_dot_A_baker_wiped_flour_from_his_hands_as_the_first_loaves_came_out_golden_and_fragrant_semicolon_a_jogger_turned_the_corner_comma_her_breath_tracing_pale_clouds_behind_her_semicolon_and_far_above_comma_in_an_apartment_window_comma_someone_paused_with_coffee_in_hand_to_watch_the_sun_edge_across_the_horizon_comma_gilding_rooftops_and_antennae_like_patient_fire_dot_The_world_comma_unhurried_but_unstoppable_comma_gathered_itself_again_from_the_fragments_of_sleep_comma_and_each_heartbeat_comma_each_sound_comma_each_unnoticed_motion_whispered_the_same_simple_truth_colon_that_life_comma_for_all_its_noise_and_chaos_comma_renews_itse_1",
-            name1.function_name().expect("valid test name")
+            name1.function_name()
         );
 
         assert_eq!(
              "The_quiet_rhythm_of_the_morning_began_with_the_low_hum_of_the_city_breathing_itself_awake_comma_lights_flickering_behind_curtains_comma_buses_sighing_as_they_eased_to_a_stop_comma_and_people_stepping_carefully_into_the_chill_air_that_promised_warmth_later_in_the_day_dot_A_baker_wiped_flour_from_his_hands_as_the_first_loaves_came_out_golden_and_fragrant_semicolon_a_jogger_turned_the_corner_comma_her_breath_tracing_pale_clouds_behind_her_semicolon_and_far_above_comma_in_an_apartment_window_comma_someone_paused_with_coffee_in_hand_to_watch_the_sun_edge_across_the_horizon_comma_gilding_rooftops_and_antennae_like_patient_fire_dot_The_world_comma_unhurried_but_unstoppable_comma_gathered_itself_again_from_the_fragments_of_sleep_comma_and_each_heartbeat_comma_each_sound_comma_each_unnoticed_motion_whispered_the_same_simple_truth_colon_that_life_comma_for_all_its_noise_and_chaos_comma_renews_itse_2",
-            name2.function_name().expect("valid test name")
+            name2.function_name()
         )
     }
 }

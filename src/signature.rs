@@ -1,175 +1,117 @@
+use std::mem::take;
+
 use proc_macro2::{Delimiter, Span, TokenTree};
 
 use crate::{
-    asserts::Assert,
-    body::TestBody,
-    error::*,
-    name::*,
-    token_helpers::{IterableTokens, TokenTreeExtensions},
+    code_block::CodeBlock, consumer::TokenConsumer, generator::TokenGenerator, name::*,
+    named::Named, rule::*, span_source::SpanSource, token::Token, token_is::TokenIs,
 };
 
-enum TestSignatureState {
-    ExpectsName,
-    ExpectsBodyOrAssert,
-    HandlingAssert,
-    IsDone,
-}
-
-enum Content {
-    Body(TestBody),
-    Assert(Assert),
-}
-
-pub(crate) struct TestSignature {
-    state: TestSignatureState,
+pub(crate) struct Signature {
     anchor_span: Span,
-    parent_name_factory: NameFactory,
-    parent_code: Vec<TokenTree>,
-    name: Option<Name>,
-    child_name_factory: Option<NameFactory>,
-    content: Option<Content>,
+    name_factory: NameFactory,
+    named: Rule<Named>,
+    code: CodeBlock,
 }
 
-impl TestSignature {
-    pub(crate) fn new(
-        anchor_span: Span,
-        parent_name_factory: NameFactory,
-        parent_code: impl IterableTokens,
+impl Signature {
+    pub(crate) fn with_parent(
+        anchor_span: &impl SpanSource,
+        name_factory: NameFactory,
+        code: CodeBlock,
     ) -> Self {
         Self {
-            state: TestSignatureState::ExpectsName,
-            anchor_span,
-            parent_name_factory,
-            parent_code: parent_code.into_iter().collect(),
-            name: None,
-            child_name_factory: None,
-            content: None,
+            anchor_span: anchor_span.span(),
+            name_factory,
+            code,
+            named: Rule::Uninitialized,
         }
     }
+    pub(crate) fn new(span: &impl SpanSource, parent_name_factory: NameFactory) -> Self {
+        Self::with_parent(span, parent_name_factory, CodeBlock::new())
+    }
+}
 
-    pub(crate) fn accept_token(&mut self, tok: &proc_macro2::TokenTree) -> CompileResult<bool> {
-        match self.state {
-            TestSignatureState::ExpectsName => {
-                println!("ExpectsName {}", &tok);
-                let name = self.parent_name_factory.make_name(
-                    tok,
-                    tok.expect_string_literal("expected name of the testcase")
-                        .map_err(|e| {
-                            CompileError::new(
-                                tok.span(),
-                                format!(
-                                    "in {}  :: {} :: {}",
-                                    self.parent_name_factory
-                                        .qualified_name(tok)
-                                        .unwrap_or("test suite".into()),
-                                    e,
-                                    tok.to_string()
-                                ),
-                            )
-                        })?,
-                );
+impl TokenConsumer for Signature {
+    fn accept_token(&mut self, token: Token) -> TokenIs {
+        match &mut self.named {
+            Rule::Uninitialized => match token {
+                Token::Token(token_tree) => match litrs::StringLit::try_from(&token_tree) {
+                    Ok(literal) => {
+                        self.named = Rule::found(Named::new(
+                            self.name_factory
+                                .make_name_from_str(&token_tree, literal.value()),
+                            take(&mut self.code),
+                        ));
 
-                self.child_name_factory = Some(name.make_factory());
-                self.name = Some(name);
-                self.state = TestSignatureState::ExpectsBodyOrAssert;
-                Ok(true)
-            }
+                        TokenIs::Consumed
+                    }
 
-            TestSignatureState::ExpectsBodyOrAssert => {
-                println!("ExpectsBodyOrAssert {}", &tok);
-                match tok {
-                    TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
-                        let mut body = TestBody::new(
-                            self.name.take().unwrap(),
-                            self.child_name_factory.take().unwrap(),
-                            std::mem::take(&mut self.parent_code),
+                    Err(error) => {
+                        let message = format!(
+                            "expected a test case name in quotes following the $ inside {}, but found `{}`\nERROR: {}",
+                            self.name_factory.qualified_name(&self.anchor_span),
+                            token_tree.to_string(),
+                            error
+                        );
+                        self.named = Rule::open_error(token_tree, message);
+
+                        TokenIs::Consumed
+                    }
+                },
+
+                Token::EndOfStream => TokenIs::failed_at_end(format!(
+                    "unexpected end of stream before test name in {}",
+                    self.name_factory.qualified_name(&self.anchor_span)
+                )),
+            },
+
+            Rule::Open(open) => match open.accept_token(token) {
+                TokenIs::Rejected(token) => {
+                    self.named = open.close();
+                    TokenIs::Rejected(token)
+                }
+                result => result,
+            },
+
+            Rule::OpenError(error) => {
+                match token {
+                    Token::Token(TokenTree::Group(group))
+                        if group.delimiter() == Delimiter::Brace =>
+                    {
+                        // assume this is probably the body of the test
+                        let (named, processing_error) = Named::new_from(
+                            self.name_factory.make_name_from_str(&group, "missing_name"),
+                            take(&mut self.code),
+                            group,
                         );
 
-                        for token in group.stream() {
-                            if !body.accept_token(&token)? {
-                                return CompileError::err(
-                                    &token,
-                                    "test body rejected a token. Please contact combitest project and provide the code sample because this shouldn't happen",
-                                );
-                            }
+                        self.named = error.close(Some(named));
+
+                        if let Some(processing_error) = processing_error {
+                            TokenIs::FailedProcessing(processing_error)
+                        } else {
+                            TokenIs::Consumed
                         }
-                        self.content = Some(Content::Body(body));
-                        self.state = TestSignatureState::IsDone;
-                        Ok(true)
                     }
 
-                    _ => {
-                        self.state = TestSignatureState::HandlingAssert;
-                        self.content = Some(Content::Assert(Assert::new(
-                            self.name.take().unwrap(),
-                            std::mem::take(&mut self.parent_code),
-                        )));
-                        self.accept_token(tok)
+                    Token::Token(TokenTree::Punct(punct)) if punct.as_char() == ';' => {
+                        // assume this is probably the end of the test and it was simply invalid
+                        self.named = error.close(None);
+                        TokenIs::Consumed
                     }
+
+                    other_token => error.accept_token(other_token),
                 }
             }
 
-            TestSignatureState::HandlingAssert => {
-                println!("HandlingAssert {}", &tok);
-                match &mut self.content {
-                    Some(content) => match content {
-                        Content::Body(_) => panic!(
-                            "shouldn't be possible to be handling an assert if a body has been found"
-                        ),
-                        Content::Assert(assert) => {
-                            if !assert.accept_token(tok)? {
-                                self.state = TestSignatureState::IsDone;
-                                Ok(false)
-                            } else {
-                                Ok(true)
-                            }
-                        }
-                    },
-                    None => panic!(
-                        "shouldn't be possible to be handling an assert until an assert has been signaled"
-                    ),
-                }
-            }
-
-            TestSignatureState::IsDone => {
-                println!("IsDone {}", &tok);
-                // don't want this token, we are already done
-                Ok(false)
-            }
+            rule => rule.accept_token(token),
         }
     }
+}
 
-    pub(crate) fn generate_tokens(&mut self) -> CompileResult<Vec<proc_macro2::TokenTree>> {
-        match &mut self.content {
-            Some(content) => match content {
-                Content::Body(body) => body.generate_tokens(),
-                Content::Assert(assert) => assert.generate_tokens(),
-            },
-            None => match &self.name {
-                Some(name) => CompileError::err(
-                    name.span(),
-                    format!(
-                        "test case specified without a body at `{}`. expected a test body in braces or a valid assertion",
-                        name.full_name()?
-                    ),
-                ),
-                None => {
-                    if self.parent_name_factory.has_parent() {
-                        CompileError::err(
-                            &self.anchor_span,
-                            format!(
-                                "test case specified within `{}` without a name. expected a test name in quotes",
-                                self.parent_name_factory.qualified_name(&self.anchor_span)?
-                            ),
-                        )
-                    } else {
-                        CompileError::err(
-                            &self.anchor_span,
-                            "expected a test name in quotes".to_string(),
-                        )
-                    }
-                }
-            },
-        }
+impl TokenGenerator for Signature {
+    fn generate_tokens(&mut self, collector: &mut Vec<TokenTree>) {
+        self.named.generate_tokens(collector)
     }
 }

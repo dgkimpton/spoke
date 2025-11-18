@@ -2,8 +2,6 @@ pub(crate) use proc_macro2::{
     Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream as Stream, TokenTree,
 };
 
-use crate::error::CompileError;
-
 pub(crate) trait IterableTokens: IntoIterator<Item = TokenTree> {}
 impl<T: IntoIterator<Item = TokenTree>> IterableTokens for T {}
 
@@ -28,6 +26,9 @@ pub(crate) fn lit_string(s: String) -> TokenTree {
 pub(crate) fn braced(toks: impl IterableTokens) -> TokenTree {
     group(Delimiter::Brace, toks)
 }
+pub(crate) fn braced_stream(stream: Stream) -> TokenTree {
+    TokenTree::Group(Group::new(Delimiter::Brace, stream))
+}
 pub(crate) fn parenthesised(toks: impl IterableTokens) -> TokenTree {
     group(Delimiter::Parenthesis, toks)
 }
@@ -39,17 +40,4 @@ fn group(delim: Delimiter, toks: impl IterableTokens) -> TokenTree {
     let mut stream = Stream::new();
     stream.extend(toks);
     TokenTree::Group(Group::new(delim, stream))
-}
-
-pub(crate) trait TokenTreeExtensions {
-    fn expect_string_literal(&self, requirement: &str) -> Result<String, CompileError>;
-}
-
-impl TokenTreeExtensions for TokenTree {
-    fn expect_string_literal(&self, requirement: &str) -> Result<String, CompileError> {
-        match litrs::StringLit::try_from(self) {
-            Ok(string_lit) => Ok(string_lit.value().to_string()),
-            Err(e) => CompileError::err(self, format!("{requirement} :: `{e}`")),
-        }
-    }
 }

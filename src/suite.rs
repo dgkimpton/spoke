@@ -1,121 +1,127 @@
-use proc_macro2::{TokenStream, TokenTree};
+use crate::{
+    consumer::*,
+    generator::{IntoVecTokens, TokenGenerator},
+    name::NameFactory,
+    signature::Signature,
+    token::Token,
+    token_helpers::*,
+    token_is::TokenIs,
+};
 
-use crate::{error::*, name::*, signature::TestSignature, token_helpers::*};
-
-pub(crate) fn process(input: TokenStream) -> CompileResult<Vec<TokenTree>> {
-    if input.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut suite = TestSuite::new(NameFactory::new());
-
-    for tok in input {
-        if !suite.accept_token(&tok)? {
-            return CompileError::err(
-                &tok,
-                format!("unexpected token `{}` in combitest macro", tok),
-            );
-        }
-    }
-
-    suite.generate_tokens()
-}
-
-enum TestSuiteState {
-    Preamble,
-    TestSpecification,
-}
-
-pub(crate) struct TestSuite {
-    state: TestSuiteState,
+pub(crate) struct Suite {
     name_factory: NameFactory,
     preamble: Vec<TokenTree>,
-    tests: Vec<TestSignature>,
-    partial_test: Option<TestSignature>,
+    signatures: Vec<Signature>,
+    partial_signature: Option<Signature>,
 }
 
-impl TestSuite {
+impl Suite {
     pub(crate) fn new(name_factory: NameFactory) -> Self {
         Self {
-            state: TestSuiteState::Preamble,
             name_factory,
             preamble: Vec::new(),
-            tests: Vec::new(),
-            partial_test: None,
+            signatures: Vec::new(),
+            partial_signature: None,
         }
     }
+}
 
-    pub(crate) fn accept_token(&mut self, tok: &TokenTree) -> CompileResult<bool> {
-        match self.state {
-            TestSuiteState::Preamble => match tok {
-                TokenTree::Punct(punct) if punct.as_char() == '$' => {
-                    self.partial_test = Some(TestSignature::new(
-                        tok.span(),
-                        self.name_factory.clone(),
-                        vec![],
-                    ));
-                    self.state = TestSuiteState::TestSpecification;
-                    Ok(true)
-                }
-                _ => {
-                    self.preamble.push(tok.clone());
-                    Ok(true)
-                }
-            },
-            TestSuiteState::TestSpecification => {
-                if self.partial_test.as_mut().unwrap().accept_token(tok)? {
-                    Ok(true)
-                } else {
-                    // test rejected the input without error which means that
-                    // the test is now complete.
-                    self.tests.push(self.partial_test.take().unwrap());
-                    self.state = TestSuiteState::Preamble;
+impl TokenConsumer for Suite {
+    fn accept_token(&mut self, token: Token) -> TokenIs {
+        if let Some(signature) = &mut self.partial_signature {
+            match signature.accept_token(token) {
+                TokenIs::Rejected(rejected_token) => {
+                    // test rejected the input which means that this test is now complete.
+                    self.signatures.push(
+                        self.partial_signature
+                            .take()
+                            .expect("the partial test to always exist here"),
+                    );
 
-                    // back to the start looking for more tests
-                    self.accept_token(tok)
+                    // look for more signatures starting with the previously rejected
+                    self.accept_token(rejected_token)
+                }
+
+                result => result,
+            }
+        } else {
+            match token {
+                Token::Token(TokenTree::Punct(punct)) if punct.as_char() == '$' => {
+                    self.partial_signature =
+                        Some(Signature::new(&punct, self.name_factory.clone()));
+                    TokenIs::Consumed
+                }
+
+                Token::Token(token_tree) => {
+                    self.preamble.push(token_tree);
+                    TokenIs::Consumed
+                }
+
+                Token::EndOfStream => {
+                    if let Some(last_signature) = &mut self.partial_signature {
+                        match last_signature.accept_token(Token::EndOfStream) {
+                            TokenIs::Rejected(rejected_token) => {
+                                self.signatures.push(
+                                    /* note: we could take in the if let above, but then a failure in accept would lose the signature completely */
+                                    self.partial_signature
+                                        .take()
+                                        .expect("the last partial test to always exist here"),
+                                );
+
+                                self.accept_token(rejected_token)
+                            }
+                            result => result,
+                        }
+                    } else {
+                        TokenIs::Rejected(Token::EndOfStream)
+                    }
                 }
             }
         }
     }
-    
-    pub(crate) fn generate_tokens(&mut self) -> CompileResult<Vec<TokenTree>> {
-        if self.partial_test.is_some() {
-            self.tests.push(self.partial_test.take().unwrap());
+}
+
+impl TokenGenerator for Suite {
+    fn generate_tokens(&mut self, collector: &mut Vec<TokenTree>) {
+        if self.signatures.is_empty() && self.preamble.is_empty() {
+            return;
         }
 
-        if self.tests.is_empty() && self.preamble.is_empty() {
-            return Ok(vec![]);
+        let call_site = Span::call_site();
+
+        collector.extend([
+            punct('#'),
+            bracketed([
+                ident("cfg", call_site),
+                parenthesised([ident("test", call_site)]),
+            ]),
+            punct('#'),
+            bracketed([
+                ident("allow", call_site),
+                parenthesised([ident("unused_mut", call_site)]),
+            ]),
+            punct('#'),
+            bracketed([
+                ident("allow", call_site),
+                parenthesised([ident("unused_variables", call_site)]),
+            ]),
+            ident("mod", call_site),
+            ident("spoketest", call_site),
+            braced_stream(self.generate_suite()),
+        ]);
+    }
+}
+
+impl Suite {
+    fn generate_suite(&mut self) -> Stream {
+        let mut content = Stream::new();
+
+        content.extend(std::mem::take(&mut self.preamble).into_iter());
+
+        for test in &mut self.signatures {
+            content.extend(test.into_vec());
         }
 
-        let mut test_tokens = Vec::new();
-
-        for test in &mut self.tests {
-            let mut tokens = test.generate_tokens()?;
-            test_tokens.append(&mut tokens);
-        }
-
-        Ok(vec![
-            punct('#'),
-            bracketed([
-                ident("cfg", Span::call_site()),
-                parenthesised([ident("test", Span::call_site())]),
-            ]),
-
-            punct('#'),
-            bracketed([
-                ident("allow", Span::call_site()),
-                parenthesised([ident("unused_mut", Span::call_site())]),
-            ]),
-            
-            punct('#'),
-            bracketed([
-                ident("allow", Span::call_site()),
-                parenthesised([ident("unused_variables", Span::call_site())]),
-            ]),
-            
-            ident("mod", Span::call_site()),
-            ident("combitests", Span::call_site()),
-            braced(self.preamble.drain(..).chain(test_tokens)),
-        ])
+        content
     }
 }

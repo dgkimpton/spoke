@@ -1,97 +1,103 @@
 use proc_macro2::TokenTree;
 
 use crate::{
-    error::*,
-    name::{Name, NameFactory},
-    signature::TestSignature,
-    token_helpers::*,
+    code_block::CodeBlock, consumer::*, error::ProcessingError, generator::TokenGenerator, name::*,
+    signature::Signature, token::Token, token_helpers::*, token_is::TokenIs,
 };
 
-enum TestBodyState {
-    Code,
-    ChildTest,
-}
-
-pub(crate) struct TestBody {
-    state: TestBodyState,
+pub(crate) struct Body {
     name: Name,
     child_name_factory: NameFactory,
-    code: Vec<TokenTree>,
-    children: Vec<TestSignature>,
-    partial_child: Option<Box<TestSignature>>,
+    code: CodeBlock,
+    children: Vec<Signature>,
+    partial_child: Option<Box<Signature>>,
 }
-impl TestBody {
-    pub(crate) fn new(
-        name: Name,
-        child_name_factory: NameFactory,
-        parent_code: Vec<TokenTree>,
-    ) -> Self {
+
+impl Body {
+    pub(crate) fn new(name: Name, parent_code: CodeBlock) -> Self {
         Self {
-            state: TestBodyState::Code,
+            child_name_factory: name.make_factory(),
             name,
-            child_name_factory,
             code: parent_code,
             children: Vec::new(),
             partial_child: None,
         }
     }
 
-    pub(crate) fn accept_token(&mut self, tok: &TokenTree) -> CompileResult<bool> {
-        match self.state {
-            TestBodyState::Code => match tok {
-                TokenTree::Punct(punct) if punct.as_char() == '$' => {
-                    self.partial_child = Some(Box::new(TestSignature::new(
-                        tok.span(),
+    pub(crate) fn new_from(
+        input: impl IterableTokens,
+        name: Name,
+        code: CodeBlock,
+    ) -> (Self, Option<ProcessingError>) {
+        input.process_into(Self::new(name,  code))
+    }
+}
+
+impl TokenConsumer for Body {
+    fn accept_token(&mut self, token: Token) -> TokenIs {
+        if let Some(child) = &mut self.partial_child {
+            match child.accept_token(token) {
+                TokenIs::Rejected(token) => {
+                    // test rejected the input which means that the test is now complete.
+                    self.children.push(*self.partial_child.take().unwrap());
+                    self.accept_token(token)
+                }
+                TokenIs::Consumed => todo!(),
+                TokenIs::ConsumedAndFinished => {
+                    
+                },
+                TokenIs::FailedProcessing(processing_error) => todo!(),
+            }
+        } else {
+            match token {
+                Token::Token(TokenTree::Punct(punct)) if punct.as_char() == '$' => {
+                    self.partial_child = Some(Box::new(Signature::with_parent(
+                        &punct,
                         self.child_name_factory.clone(),
                         self.code.clone(),
                     )));
-                    self.state = TestBodyState::ChildTest;
-                    Ok(true)
+                    TokenIs::Consumed
                 }
-                _ => {
-                    self.code.push(tok.clone());
-                    Ok(true)
+
+                Token::Token(other_token) => {
+                    self.code.push(other_token);
+                    TokenIs::Consumed
                 }
-            },
 
-            TestBodyState::ChildTest => {
-                if self.partial_child.as_mut().unwrap().accept_token(tok)? {
-                    Ok(true)
-                } else {
-                    // test rejected the input without error which means that
-                    // the test is now complete.
-                    self.children.push(*self.partial_child.take().unwrap());
-                    self.state = TestBodyState::Code;
+                Token::EndOfStream => {
+                    if let Some(last_child) = &mut self.partial_child {
+                        match last_child.accept_token(token) {
+                            TokenIs::Rejected(rejected_token) => {
+                                self.children.push(*
+                                    /* note: we could take in the if let above, but then a failure in accept would lose the child completely */
+                                    self.partial_child
+                                        .take()
+                                        .expect("the last partial child to always exist here"),);
 
-                    // back to the start looking for more tests
-                    self.accept_token(tok)
+                                self.accept_token(rejected_token)
+                            }
+                            result => result,
+                        }
+                    } else {
+                        TokenIs::Rejected(Token::EndOfStream)
+                    }
                 }
             }
         }
     }
+}
 
-    pub(crate) fn generate_tokens(&mut self) -> CompileResult<Vec<TokenTree>> {
-        if self.partial_child.is_some() {
-            self.children.push(*self.partial_child.take().unwrap());
-        }
-
+impl TokenGenerator for Body {
+    fn generate_tokens(&mut self, collector: &mut Vec<TokenTree>) {
         if self.children.is_empty() {
-            Ok(vec![
+            collector.extend([
                 punct('#'),
                 bracketed([ident("test", *self.name.span())]),
                 ident("fn", *self.name.span()),
-                ident(self.name.function_name()?.as_str(), *self.name.span()),
+                ident(self.name.function_name().as_str(), *self.name.span()),
                 parenthesised([]),
-                braced(std::mem::take(&mut self.code)),
+                braced(self.code.take()),
             ])
-        } else {
-            let mut child_tokens = Vec::new();
-            for test in &mut self.children {
-                let mut tokens = test.generate_tokens()?;
-                child_tokens.append(&mut tokens);
-            }
-
-            Ok(child_tokens)
         }
     }
 }
