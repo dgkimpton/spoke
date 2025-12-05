@@ -1,12 +1,21 @@
 #[cfg(test)]
 mod tests {
-
     use proc_macro2::Span;
 
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{body::Body, code_block::CodeBlock, name::*, unit_tests::testing_helpers::*};
+    use crate::{name::*, parse, parser::*, unit_tests::testing_helpers::*};
+
+    struct SuiteStructure();
+    impl SurroundingString for SuiteStructure {
+        fn surround(input: &str) -> String {
+            format!(
+                "#[cfg(test)] #[allow(unused_mut)] #[allow(unused_variables)]  mod spoketest {{ {} }}",
+                input
+            )
+        }
+    }
 
     #[test]
     fn keeps_basic_code() {
@@ -17,8 +26,7 @@ mod tests {
                 assert_eq!(x,y);
             "##,
         ))
-        .generate()
-        .matches(Expected(
+        .matches_inside::<SuiteStructure>(Expected(
             r##"
             # [test] fn a_test () { 
                 let x = 5;
@@ -39,8 +47,7 @@ mod tests {
                 }
             "##,
         ))
-        .generate()
-        .matches(Expected(
+        .matches_inside::<SuiteStructure>(Expected(
             r##"
             #[test] 
             fn a_test_inner_spec_1() {
@@ -69,8 +76,7 @@ mod tests {
                 }
             "##,
         ))
-        .generate()
-        .matches(Expected(
+        .matches_inside::<SuiteStructure>(Expected(
             r##"
                 #[test] 
                 fn a_test_inner_spec_1() {
@@ -107,8 +113,7 @@ mod tests {
                 let n = 7;
             "##,
         ))
-        .generate()
-        .matches(Expected(
+        .matches_inside::<SuiteStructure>(Expected(
             r##"
                 #[test] 
                 fn a_test_inner_spec_1() {
@@ -163,8 +168,7 @@ mod tests {
             }
             "##,
         ))
-        .generate()
-        .matches(Expected(
+        .matches_inside::<SuiteStructure>(Expected(
             r##"
                 #[test] 
                 fn a_test_level_inner_spec_1_2nd_3rda() {
@@ -199,17 +203,25 @@ mod tests {
         ));
     }
 
-    fn parse_valid(input: Input) -> Body {
-        let (result, error) = Body::new_from(
-            input.stream(),
-            NameFactory::new().make_name(&Span::call_site(), "a_test".to_string()),
-            CodeBlock::new(),
-        );
+    fn parse_valid(input: Input) -> proc_macro2::TokenStream {
+        let mut output = SuiteGenerator::new();
 
-        if let Some(error) = error {
-            panic!("{}", error)
-        }
+        let tok = Input(format!("{{ {} }}", input.0).as_str())
+            .stream()
+            .into_iter()
+            .next()
+            .expect("there should be valid input");
 
-        result
+        match tok {
+            proc_macro2::TokenTree::Group(group) => parse::Body::from_suite(
+                parse::Suite(),
+                Name::new(&Span::call_site(), "a_test"),
+                group,
+                &mut output,
+            ),
+            _ => panic!("body parsers can only parse groups"),
+        };
+
+        output.generate_output()
     }
 }

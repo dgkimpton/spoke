@@ -1,4 +1,4 @@
-use proc_macro2::{Group, Ident, Literal, Punct, Span, TokenTree};
+pub(crate) use proc_macro2::{Group, Ident, Literal, Punct, Span, TokenTree};
 
 pub(crate) trait SpanSource {
     fn span(&self) -> Span;

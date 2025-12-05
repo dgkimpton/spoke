@@ -1,166 +1,95 @@
+use crate::parser::{SpanSource, TestCase};
 use proc_macro2::Span;
-use std::{cell::RefCell, rc::Rc};
 
-use crate::span_source::SpanSource;
-
-#[derive(Clone)]
-pub(crate) struct NameFactory(Rc<RefCell<Factory>>);
-
-impl NameFactory {
+pub(crate) struct CompoundName<'a> {
+    parts: NameParts<'a>,
+}
+impl<'a> CompoundName<'a> {
     pub(crate) fn new() -> Self {
-        Self(Rc::new(RefCell::new(Factory::new())))
-    }
-
-    pub(crate) fn make_factory(&self, title: String) -> Self {
-        Self(Rc::new(RefCell::new(Factory::new_with_parent(
-            self.clone(),
-            Some(title),
-        ))))
-    }
-
-    pub(crate) fn make_name_from_str(&self, sp: &impl SpanSource, text: &str) -> Name {
-        self.0
-            .borrow_mut()
-            .make_name(sp, text.to_string(), self.clone())
-    }
-
-    #[allow(unused)]
-    pub(crate) fn make_name(&self, sp: &impl SpanSource, text: String) -> Name {
-        self.0.borrow_mut().make_name(sp, text, self.clone())
-    }
-
-    pub(crate) fn qualified_name(&self, sp: &impl SpanSource) -> String {
-        let imp = self.0.borrow();
-        if let Some(ref title) = imp.title {
-            self.assemble_name(sp, title, " ⟶ ")
-        } else {
-            self.assemble_name(sp, "SUITE", " ⟶ ")
+        Self {
+            parts: NameParts::new(),
         }
     }
-
-    fn assemble_name(&self, sp: &impl SpanSource, text: &str, sep: &str) -> String {
-        let imp = self.0.borrow();
-
-        if !imp.has_parent() {
-            if let Some(ref title) = imp.title {
-                return format!("{}{}{}", title, sep, text);
-            }
-
-            return text.into();
-        }
-
-        format!(
-            "{}{}{}",
-            imp.parent
-                .as_ref()
-                .unwrap()
-                .assemble_name(sp, imp.title.as_ref().unwrap(), sep),
-            sep,
-            text
-        )
-    }
-
-    fn max_index(&self) -> usize {
-        self.0.as_ref().borrow().provided_name_count
-    }
-
-    #[allow(unused)]
-    pub(crate) fn has_parent(&self) -> bool {
-        self.0.as_ref().borrow().has_parent()
+    pub(crate) fn followed_by(mut self, name: &'a Name) -> Self {
+        self.parts.push(name);
+        self
     }
 }
 
-struct Factory {
-    parent: Option<NameFactory>,
-    title: Option<String>,
-    provided_name_count: usize,
-}
-
-impl Factory {
-    fn new() -> Self {
-        Self {
-            parent: None,
-            title: None,
-            provided_name_count: 0,
-        }
+pub(crate) struct NameParts<'a>(Vec<&'a Name>);
+impl<'a> NameParts<'a> {
+    pub(crate) fn new() -> Self {
+        Self(Vec::new())
     }
-
-    pub(crate) fn new_with_parent(parent: NameFactory, title: Option<String>) -> Self {
-        Self {
-            parent: Some(parent),
-            title,
-            provided_name_count: 0,
-        }
-    }
-
-    pub(crate) fn has_parent(&self) -> bool {
-        self.parent.is_some()
-    }
-
-    pub(crate) fn make_name(
-        &mut self,
-        sp: &impl SpanSource,
-        text: String,
-        factory: NameFactory,
-    ) -> Name {
-        Name::new(sp, factory, text, self.next_index())
-    }
-
-    fn next_index(&mut self) -> usize {
-        self.provided_name_count += 1;
-        self.provided_name_count
+    pub(crate) fn push(&mut self, name: &'a Name) {
+        self.0.push(name)
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct Name {
-    factory: NameFactory,
-    span: Span,
-    text: String,
-    index: usize,
+    location: Span,
+    sanitised: String,
+}
+
+impl SpanSource for Name {
+    fn span(&self) -> Span {
+        self.location
+    }
 }
 
 impl Name {
-    pub(crate) fn new(
-        sp: &impl SpanSource,
-        factory: NameFactory,
-        text: String,
-        index: usize,
-    ) -> Self {
+    pub(crate) fn new(location: &impl SpanSource, source: impl AsRef<str>) -> Self {
         Self {
-            factory,
-            span: sp.span(),
-            text,
-            index,
+            location: location.span(),
+            sanitised: sanitise(source.as_ref()),
         }
     }
 
-    pub(crate) fn span(&self) -> &proc_macro2::Span {
-        &self.span
-    }
-
-    pub(crate) fn make_factory(&self) -> NameFactory {
-        self.factory.make_factory(self.text.clone())
-    }
-
-    pub(crate) fn function_name(&self) -> String {
-        sanitise(
-            self.factory
-                .assemble_name(self.span(), &self.text, " ")
-                .as_str(),
-            self.index,
-            self.factory.max_index(),
+    pub(crate) fn missing(token: &impl SpanSource, id: usize) -> Name {
+        Self::new(
+            token,
+            if id > 1 {
+                format!("missing_name_{}", id)
+            } else {
+                "missing_name".to_string()
+            },
         )
-    }
-
-    pub(crate) fn full_name(&self) -> String {
-        self.factory.assemble_name(self.span(), &self.text, " ⟶ ")
     }
 }
 
-const MAX_LENGTH: usize = 900;
+pub(crate) trait Nameable {
+    fn collect_name_parts<'a>(&'a self, compound: CompoundName<'a>) -> CompoundName<'a>;
+}
 
-fn sanitise(text: &str, index: usize, max_index: usize) -> String {
+pub(crate) trait Populator {
+    fn populate_test(&self, test: TestCase) -> TestCase;
+}
+
+impl<'a> CompoundName<'a> {
+    pub(crate) fn function_name(self) -> (String, Span) {
+        let mut name = self.parts.0.iter().fold(String::new(), |mut acc, b| {
+            if !acc.is_empty() {
+                acc.push_str("_");
+            }
+            acc.push_str(&b.sanitised);
+            acc
+        });
+
+        let location = match self.parts.0.last() {
+            Some(n) => n.location,
+            None => Span::call_site(),
+        };
+
+        if name.starts_with(|c| !unicode_ident::is_xid_start(c)) {
+            name.insert(0, 't');
+        }
+
+        (name, location)
+    }
+}
+
+fn sanitise(text: &str) -> String {
     // this is hit or miss - assume most test names contain some special
     // characters and are likely to expand a bit
     let mut builder = WhitespaceSeparatedWords::new(text.len());
@@ -169,12 +98,9 @@ fn sanitise(text: &str, index: usize, max_index: usize) -> String {
         if !builder.consume_with_pending(c) {
             builder.consume_char(c)
         }
-        if builder.out.len() > MAX_LENGTH {
-            break;
-        }
     }
 
-    builder.build(index, max_index)
+    builder.build()
 }
 
 struct WhitespaceSeparatedWords {
@@ -212,9 +138,6 @@ impl WhitespaceSeparatedWords {
             self.in_white = false;
         };
 
-        if self.out.is_empty() && !unicode_ident::is_xid_start(c) {
-            self.out.push('t');
-        }
         self.out.push(c);
     }
 
@@ -310,35 +233,11 @@ impl WhitespaceSeparatedWords {
         }
     }
 
-    fn build(&mut self, index: usize, max_index: usize) -> String {
+    fn build(&mut self) -> String {
         if self.in_white {
             self.out.pop();
         }
         self.in_white = false;
-        if self.out.len() > MAX_LENGTH {
-            self.out.truncate(MAX_LENGTH);
-            self.out.push_str(format_index(index, max_index).as_str());
-        }
         std::mem::take(&mut self.out)
-    }
-}
-
-fn format_index(index: usize, max_index: usize) -> String {
-    let digits = (max_index as f64 + 0.1).log10().ceil() as usize;
-    format!("_{:0width$}", index, width = digits)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_index;
-
-    #[test]
-    fn format_index_works_correctly() {
-        assert_eq!("_0", format_index(0, 1));
-        assert_eq!("_1", format_index(1, 1));
-        assert_eq!("_00", format_index(0, 10));
-        assert_eq!("_07", format_index(7, 12));
-        assert_eq!("_17", format_index(17, 17));
-        assert_eq!("_1889", format_index(1889, 2000));
     }
 }

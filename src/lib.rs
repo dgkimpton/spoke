@@ -1,24 +1,13 @@
-mod error;
-mod rule;
-mod consumer;
-mod generator;
-mod span_source;
-mod token_helpers;
-mod name;
-mod suite;
-mod signature;
-mod named;
-mod body;
-mod content;
-mod spoke;
-mod asserts;
 mod code_block;
-mod operand;
-mod equality;
-mod token;
-mod token_is;
-mod right;
-mod rules;
+mod generator;
+mod name;
+mod parse;
+mod parse_rule;
+mod parser;
+mod span_source;
+mod spoke;
+mod string_lit;
+mod token_helpers;
 
 /// # spoke::test!
 ///
@@ -107,6 +96,11 @@ mod rules;
 /// Not every test needs to, or benefits from, being written with spoke, but for simple sequential tests it can help
 /// you get up and running quickly.
 ///
+///
+///
+/// spoke::test!{
+/// $;
+/// }
 #[proc_macro]
 pub fn test(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     crate::spoke::generate_tests(proc_macro2::TokenStream::from(input)).into()

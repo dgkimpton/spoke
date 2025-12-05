@@ -1,18 +1,16 @@
 #[cfg(test)]
 mod tests {
-
     #[allow(unused_imports)]
     use super::*;
 
-    use crate::{consumer::TokenStreamExt, name::*, suite::Suite, unit_tests::testing_helpers::*};
+    use crate::{spoke, unit_tests::testing_helpers::*};
 
     #[test]
     fn an_empty_input_produces_no_output() {
-        parse_valid(Input(
+        parsing(Input(
             r##"
             "##,
         ))
-        .generate()
         .matches(Expected(
             r##"
             "##,
@@ -20,52 +18,82 @@ mod tests {
     }
 
     #[test]
-    fn allows_test_specification_inside_a_module() {
-        parse_valid(Input(
+    fn an_empty_test_body_produces_a_single_test() {
+        parsing(Input(
             r##"
-               $"my test"{}
+            $"first test" {}
             "##,
         ))
-        .generate()
         .matches(Expected(
             r##"
-                #[cfg(test)]
-                #[allow (unused_mut)]
-                #[allow (unused_variables)] 
-                mod spoketest {
-                    #[test] fn my_test() { }
-                }
+            #[cfg(test)]
+            #[allow(unused_mut)]
+            #[allow(unused_variables)] 
+            mod spoketest {
+                #[test] fn first_test() { }
+            }
             "##,
         ));
     }
-    
+
     #[test]
     fn allows_multiple_test_specifications() {
-        parse_valid(Input(
+        parsing(Input(
             r##"
                $"my test"{}
                $"another test"{}
                $"3rd test"{}
             "##,
-        ))        
-        .generate()
+        ))
         .matches(Expected(
             r##"
-                #[cfg(test)]
-                #[allow (unused_mut)]
-                #[allow (unused_variables)] 
+            #[cfg(test)]
+            #[allow (unused_mut)]
+            #[allow (unused_variables)] 
+            mod spoketest {
+                #[test] fn my_test() { }
+                #[test] fn another_test() { }
+                #[test] fn t3rd_test() { }
+            }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn preamble_is_included() {
+        parsing(Input(
+            r##"
+            use mycrate::*;
+            use crate::deeply::nested::{
+                my_first_function,
+                my_second_function,
+                AndATraitType
+            };
+            $"first test" {}
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+            #[cfg(test)]
+            #[allow(unused_mut)]
+            #[allow(unused_variables)] 
                 mod spoketest {
-                    #[test] fn my_test() { }
-                    #[test] fn another_test() { }
-                    #[test] fn t3rd_test() { }
-                }
+                use mycrate::*;
+                use crate::deeply::nested::{
+                    my_first_function,
+                    my_second_function,
+                    AndATraitType
+                };
+
+                #[test] fn first_test() { }
+            }
             "##,
         ));
     }
 
     #[test]
     fn preamble_is_only_included_once() {
-        parse_valid(Input(
+        parsing(Input(
             r##"
                 use mycrate::*;
                 use crate::deeply::nested::{
@@ -78,7 +106,6 @@ mod tests {
                $"3rd test"{}
             "##,
         ))
-        .generate()
         .matches(Expected(
             r##"
                 #[cfg(test)]
@@ -102,7 +129,7 @@ mod tests {
 
     #[test]
     fn sparse_preamble_is_hoisted() {
-        parse_valid(Input(
+        parsing(Input(
             r##"
                 use mycrate::*;
                 use crate::deeply::nested::{
@@ -118,7 +145,6 @@ mod tests {
                 use some::*;
             "##,
         ))
-        .generate()
         .matches(Expected(
             r##"
                 #[cfg(test)]
@@ -144,17 +170,211 @@ mod tests {
     }
 
     #[test]
-    fn an_invalid_test_fails_to_compile() {
-        let input = Input(
-            "$"
-        );
-        let (_result, error) = input.stream().process_into(Suite::new(NameFactory::new()));
-        assert!(error.is_some());
+    fn after_a_broken_name_test_body_is_still_produced() {
+        parsing(Input(
+            r##"
+            $"first test"uhoh {}
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+            #[cfg(test)]
+            #[allow(unused_mut)]
+            #[allow(unused_variables)] 
+            mod spoketest {
+                compile_error!("expected a valid test case name in quotes following the dollars, but found `\"first test\"uhoh`\nunmatched suffix detected, `uhoh`, did you miss a space?");
+                #[test] fn missing_name() { }
+            }
+            "##,
+        ));
     }
 
-    fn parse_valid(input: Input) -> Suite {
-        let test = Suite::new(NameFactory::new());
-        let (result, _error) = input.stream().process_into(test);
-        result
+    #[test]
+    fn after_a_broken_name_test_body_is_still_produced_2() {
+        parsing(Input(
+            r##"
+            $first test {}
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+            #[cfg(test)]
+            #[allow(unused_mut)]
+            #[allow(unused_variables)] 
+            mod spoketest {
+                compile_error!("expected a valid test case name in quotes following the dollars, but found `first`");
+                #[test] fn missing_name() { }
+            }
+            "##,
+        ));
+    }
+
+    fn parsing(input: Input) -> proc_macro2::TokenStream {
+        spoke::generate_tests(input.stream())
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    use crate::{spoke, unit_tests::testing_helpers::*};
+
+    #[test]
+    fn missing_name_empty_test() {
+        parsing(Input(
+            r##"
+               $;
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found `;` before any body was provided");
+                }
+            "##,
+        ));
+    }
+    #[test]
+    fn missing_name_due_to_eof() {
+        parsing(Input(
+            r##"
+               $
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("reached end of input before reaching the end of the test definition");
+                }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn invalid_name_token_empty_test() {
+        parsing(Input(
+            r##"
+               $hello world;
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found `hello`");
+                }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn invalid_name_token_stream_end() {
+        parsing(Input(
+            r##"
+               $hello
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found `hello`");
+                    compile_error!("reached end of input before reaching the end of the test definition");
+                }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn missing_top_level_test_body() {
+        parsing(Input(
+            r##"
+               $"hello";
+            "##,
+        ))
+        .matches(Expected(
+            r##"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a test body in braces {} after the name but found `;`");
+                }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn invalid_token_directly_following_name() {
+        parsing(Input(
+            r##"
+               $"hello"world;
+            "##,
+        ))
+        .matches(Expected(
+            r###"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found `\"hello\"world`\nunmatched suffix detected, `world`, did you miss a space?");
+                }
+            "###,
+        ));
+    }
+
+    #[test]
+    fn eof_token_directly_following_name() {
+        parsing(Input(
+            r##"
+               $"hello"
+            "##,
+        ))
+        .matches(Expected(
+            r###"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("reached end of input before finding the test body for named test");
+                }
+            "###,
+        ));
+    }
+
+    #[test]
+    fn valid_name_then_error_token_then_eof() {
+        parsing(Input(
+            r##"
+               $"hello" #
+            "##,
+        ))
+        .matches(Expected(
+            r###"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a test body in braces {} after the name but found `#`") ;
+                    compile_error!("reached end of input before reaching the end of the test definition");
+                }
+            "###,
+        ));
+    }
+
+    fn parsing(input: Input) -> proc_macro2::TokenStream {
+        spoke::generate_tests(input.stream())
     }
 }

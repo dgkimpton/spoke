@@ -1,6 +1,6 @@
 [package]
 name = "spoke"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 description = "[coming soon] Simplified unit testing for Rust."
 license = "MIT"
@@ -16,4 +16,4 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)
 [dependencies]
 proc-macro2 = { version = "1", features=["span-locations", "proc-macro"]}
 unicode-ident = {version = "1"}
-litrs = { version = "1", features = ["proc-macro2"] }
+#litrs = { version = "1", features = ["proc-macro2"] }
