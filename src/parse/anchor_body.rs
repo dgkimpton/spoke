@@ -89,16 +89,9 @@ impl Parser for TransientBodyNamed {
                 parse::Body::from_body(self.parent, self.name, group, target)
             }
 
-            TokenTree::Punct(punct) if punct.as_char() == ';' => {
-                target.push_new_error(
-                    &self.name.span(),
-                    "found `;` instead of test body or assertion",
-                );
-                ParseRule::Body(self.parent)
-            }
-
             token_tree => {
-                parse::Assert::new(self.parent, self.name).forward_token(token_tree, target)
+                parse::Assert::new(self.parent, self.name)
+                    .forward_token(token_tree, target)
             }
         }
     }
