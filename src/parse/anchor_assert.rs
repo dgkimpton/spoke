@@ -1,4 +1,9 @@
-use crate::{code_block::CodeBlock, name::*, parse, parser::*};
+use crate::{
+    code_block::CodeBlock,
+    name::*,
+    parse::{self, Dollars, Negation},
+    parser::*,
+};
 
 pub(crate) struct TransientAssertAnchor {
     parent: parse::Body,
@@ -87,7 +92,8 @@ fn expected_assert(
     target.push_new_error(
         location,
         format!(
-            "RULE::TransientAssertAnchor: expected a valid assertion type following the dollars, but {}",
+            "RULE::TransientAssertAnchor: expected a valid assertion type [{}] following the dollars, but {}",
+            Dollars::list(),
             err.into()
         ),
     );
@@ -104,6 +110,16 @@ impl TransientAssertAnchor {
             parse::Dollars::AssertEq => parse::AssertEq::new(
                 self.parent,
                 self.name,
+                Negation::Positive,
+                &self.anchor,
+                self.left_code,
+                location,
+            )
+            .consumed_token(),
+            parse::Dollars::AssertNotEq => parse::AssertEq::new(
+                self.parent,
+                self.name,
+                Negation::Negative,
                 &self.anchor,
                 self.left_code,
                 location,

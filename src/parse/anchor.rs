@@ -6,12 +6,23 @@ use crate::{name::Name, string_lit::TokenExtensions};
 
 pub(crate) enum Dollars {
     AssertEq,
+    AssertNotEq,
+}
+
+impl Dollars {
+    pub(crate) fn list() -> String {
+        [
+            Self::AssertEq.to_string(),
+            Self::AssertNotEq.to_string()
+        ].join(",")
+    }
 }
 
 impl Display for Dollars {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Dollars::AssertEq => write!(f, "eq"),
+            Dollars::AssertNotEq =>  write!(f, "ne"),
         }
     }
 }
@@ -51,6 +62,7 @@ pub(crate) fn dollars_match(tok: &TokenTree) -> MatchResult {
 pub(crate) fn dollars_ident_match(ident: String) -> Result<Dollars, String> {
     match ident.as_str() {
         "eq" => Result::Ok(Dollars::AssertEq),
+        "ne" => Result::Ok(Dollars::AssertNotEq),
         other => Result::Err(other.to_string()),
     }
 }

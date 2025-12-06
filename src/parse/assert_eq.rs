@@ -8,9 +8,15 @@ use crate::{
     token_helpers::{ident, parenthesised, punct},
 };
 
+pub(crate) enum Negation {
+    Positive,
+    Negative,
+}
+
 pub(crate) struct AssertEq {
     parent: parse::Body,
     name: Name,
+    negation: Negation,
     anchor: Span,
     left_code: CodeBlock,
     right_code: CodeBlock,
@@ -20,6 +26,7 @@ impl AssertEq {
     pub(crate) fn new(
         parent: parse::Body,
         name: Name,
+        negation: Negation,
         anchor: &impl SpanSource,
         left_code: CodeBlock,
         location: &impl SpanSource,
@@ -27,6 +34,7 @@ impl AssertEq {
         Self {
             parent,
             name,
+            negation,
             anchor: location.span(),
             left_code,
             right_code: CodeBlock::new(),
@@ -63,7 +71,13 @@ impl AssertEq {
             ));
 
             test.push_code([
-                ident("assert_eq", self.anchor),
+                ident(
+                    match self.negation {
+                        Negation::Positive => "assert_eq",
+                        Negation::Negative => "assert_ne",
+                    },
+                    self.anchor,
+                ),
                 punct('!', self.anchor),
                 parenthesised(
                     left_code
