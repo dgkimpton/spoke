@@ -14,7 +14,7 @@ pub(crate) enum Negation {
 }
 
 pub(crate) struct AssertEq {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     name: Name,
     negation: Negation,
     anchor: Span,
@@ -24,10 +24,10 @@ pub(crate) struct AssertEq {
 
 impl AssertEq {
     pub(crate) fn new(
-        parent: parse::Body,
+        parent: parse::AnchorParent,
         name: Name,
         negation: Negation,
-        anchor: &impl SpanSource,
+        _anchor: &impl SpanSource,
         left_code: CodeBlock,
         location: &impl SpanSource,
     ) -> Self {
@@ -49,7 +49,7 @@ impl AssertEq {
         if left_code.is_empty() {
             target.push_new_error(
                 &self.anchor,
-                "RULE::AssertEq: no code found for the left side of the equality assertion",
+                "no code found for the left side of the equality assertion",
             );
             is_ok = false;
         }
@@ -57,7 +57,7 @@ impl AssertEq {
         if self.right_code.is_empty() {
             target.push_new_error(
                 &self.anchor,
-                "RULE::AssertEq: no code found for the right hand side of the equality assertion",
+                "no code found for the right hand side of the equality assertion",
             );
             is_ok = false;
         }
@@ -99,7 +99,7 @@ impl Parser for AssertEq {
         match token {
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 self.generate_test(target);
-                self.parent.consumed_token()
+                self.parent.continuation()
             }
 
             other => {
@@ -112,16 +112,16 @@ impl Parser for AssertEq {
     fn end_of_group(self, target: &mut SuiteGenerator) -> ParseRule {
         target.push_new_error(
             &Span::call_site(),
-            "RULE::AssertEq: reached end of group input before reaching the end of the equality assertion definition",
+            "reached end of group input before reaching the end of the equality assertion definition",
         );
 
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {
         target.push_new_error(
             &Span::call_site(),
-            "RULE::AssertEq: reached end of input before reaching the end of the equality assertion definition",
+            "reached end of input before reaching the end of the equality assertion definition",
         );
     }
 }

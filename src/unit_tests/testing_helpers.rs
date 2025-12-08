@@ -10,16 +10,19 @@ pub(crate) trait TokenMatcher {
 }
 
 impl TokenMatcher for TokenStream {
+    #[track_caller]
     fn matches(self, expected: Expected) {
         matches_stream(self, expected);
     }
+    #[track_caller]
     fn matches_inside<T: SurroundingString>(self, expected: Expected) {
-        matches_stream(self, Expected(T::surround(expected.0).as_str()));
+       matches_stream(self, Expected(T::surround(expected.0).as_str()));
     }
 }
 
 pub(crate) struct Input<'a>(pub(crate) &'a str);
 impl<'a> Input<'a> {
+    #[track_caller]
     pub(crate) fn stream(&self) -> TokenStream {
         self.0
             .parse::<proc_macro2::TokenStream>()
@@ -36,6 +39,7 @@ impl<'a> Input<'a> {
 
 pub(crate) struct Expected<'a>(pub(crate) &'a str);
 impl<'a> Expected<'a> {
+    #[track_caller]
     pub(crate) fn stream(&self) -> proc_macro2::TokenStream {
         self.0
             .parse::<proc_macro2::TokenStream>()
@@ -44,6 +48,7 @@ impl<'a> Expected<'a> {
     }
 }
 
+#[track_caller]
 fn matches_stream(result: proc_macro2::TokenStream, expected: Expected) {
     assert_eq!(expected.stream().to_string(), result.to_string());
 }

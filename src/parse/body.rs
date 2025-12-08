@@ -8,30 +8,16 @@ pub(crate) struct Body {
 }
 
 impl Body {
-    pub(crate) fn from_body(
-        parent: parse::Body,
-        name: Name,
-        group: Group,
-        target: &mut SuiteGenerator,
-    ) -> ParseRule {
-        Self::new(
-            parse::AnchorParent::Body(Box::new(parent)),
-            name,
-            group,
-            target,
-        )
-    }
-
     pub(crate) fn from_suite(
         parent: parse::Suite,
         name: Name,
         group: Group,
         target: &mut SuiteGenerator,
     ) -> ParseRule {
-        Self::new(parse::AnchorParent::Suite(parent), name, group, target)
+        Self::new(parse::AnchorParent::from_suite(parent), name, group, target)
     }
 
-    fn new(
+    pub(crate) fn new(
         parent: parse::AnchorParent,
         name: Name,
         group: Group,
@@ -62,7 +48,7 @@ impl Parser for Body {
         match token {
             TokenTree::Punct(punct) if punct.as_char() == '$' => {
                 self.has_children = true;
-                parse::TransientBodyAnchor::new(self, &punct).consumed_token()
+                parse::TransientBodyAnchor::new(parse::AnchorParent::from_body(self), &punct).consumed_token()
             }
 
             other => {

@@ -94,7 +94,7 @@ fn sanitise(text: &str) -> String {
     // characters and are likely to expand a bit
     let mut builder = WhitespaceSeparatedWords::new(text.len());
 
-    for c in text.chars() {
+    for c in text.to_lowercase().chars() {
         if !builder.consume_with_pending(c) {
             builder.consume_char(c)
         }

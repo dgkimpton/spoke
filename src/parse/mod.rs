@@ -1,9 +1,6 @@
 mod suite;
 pub(crate) use suite::*;
 
-mod finshed;
-pub(crate) use finshed::*;
-
 mod body;
 pub(crate) use body::*;
 

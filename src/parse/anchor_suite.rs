@@ -90,15 +90,7 @@ impl Parser for TransientSuiteNamed {
             }
 
             token_tree => {
-                target.push_new_error(
-                    &token_tree,
-                    format!(
-                        "expected a test body in braces {{}} after the name but found `{}`",
-                        token_tree
-                    ),
-                );
-
-                parse::TransientSuiteNamingError::new(self.parent, self.name)
+                parse::Assert::from_suite(self.parent, self.name)
                     .forward_token(token_tree, target)
             }
         }

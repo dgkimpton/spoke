@@ -61,7 +61,6 @@ macro_rules! impl_rule {
 }
 
 impl_rule!(
-    Finished,
     Suite,
     Body,
     Assert,

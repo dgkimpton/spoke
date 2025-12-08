@@ -1,11 +1,11 @@
 use crate::{name::*, parse, parser::*};
 
 pub(crate) struct TransientBodyAnchor {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     anchor: Span,
 }
 impl TransientBodyAnchor {
-    pub(crate) fn new(parent: parse::Body, location: &impl SpanSource) -> Self {
+    pub(crate) fn new(parent: parse::AnchorParent, location: &impl SpanSource) -> Self {
         Self {
             parent,
             anchor: location.span(),
@@ -60,7 +60,7 @@ impl Parser for TransientBodyAnchor {
             &self.anchor,
             "reached end of group input before reaching the end of the test definition",
         );
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {
@@ -72,12 +72,12 @@ impl Parser for TransientBodyAnchor {
 }
 
 pub(crate) struct TransientBodyNamed {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     name: Name,
 }
 
 impl TransientBodyNamed {
-    fn new(parent: parse::Body, name: Name) -> Self {
+    pub(crate)fn new(parent: parse::AnchorParent, name: Name) -> Self {
         Self { parent, name }
     }
 }
@@ -86,7 +86,7 @@ impl Parser for TransientBodyNamed {
     fn accept_token(self, token: TokenTree, target: &mut SuiteGenerator) -> ParseRule {
         match token {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
-                parse::Body::from_body(self.parent, self.name, group, target)
+                parse::Body::new(self.parent, self.name, group, target)
             }
 
             token_tree => {
@@ -101,7 +101,7 @@ impl Parser for TransientBodyNamed {
             &self.name.span(),
             "reached end of group input before finding the test body for named test",
         );
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {
@@ -113,12 +113,12 @@ impl Parser for TransientBodyNamed {
 }
 
 pub(crate) struct TransientBodyNamingError {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     name: Name,
 }
 
 impl TransientBodyNamingError {
-    fn new(parent: parse::Body, name: Name) -> Self {
+    fn new(parent: parse::AnchorParent, name: Name) -> Self {
         Self { parent, name }
     }
 }
@@ -129,12 +129,12 @@ impl Parser for TransientBodyNamingError {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
                 // assume this is probably the body of the test
 
-                parse::Body::from_body(self.parent, self.name, group, target)
+                parse::Body::new(self.parent, self.name, group, target)
             }
 
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 // seems the test is malformed, look for more tests
-                ParseRule::Body(self.parent)
+                self.parent.continuation()
             }
 
             _ => self.consumed_token(),
@@ -147,7 +147,7 @@ impl Parser for TransientBodyNamingError {
             "reached end of group input before reaching the end of the test definition",
         );
 
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {

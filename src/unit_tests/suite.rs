@@ -310,7 +310,7 @@ mod error_tests {
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
                 mod spoketest {
-                    compile_error!("expected a test body in braces {} after the name but found `;`");
+                    compile_error!("expected an assertion or test body after the name, but found `;`");
                 }
             "##,
         ));
@@ -367,8 +367,11 @@ mod error_tests {
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
                 mod spoketest {
-                    compile_error!("expected a test body in braces {} after the name but found `#`") ;
-                    compile_error!("reached end of input before reaching the end of the test definition");
+                    compile_error!("reached end of input before finding details of the named assertion. Missing ; ?"); 
+                    #[test]
+                    fn hello () {
+                        assert!(#);
+                    }
                 }
             "###,
         ));

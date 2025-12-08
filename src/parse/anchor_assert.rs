@@ -3,17 +3,18 @@ use crate::{
     name::*,
     parse::{self, Dollars, Negation},
     parser::*,
+    string_lit::TokenExtensions,
 };
 
 pub(crate) struct TransientAssertAnchor {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     anchor: Span,
     name: Name,
     left_code: CodeBlock,
 }
 impl TransientAssertAnchor {
     pub(crate) fn new(
-        parent: parse::Body,
+        parent: parse::AnchorParent,
         name: Name,
         left_code: CodeBlock,
         location: &impl SpanSource,
@@ -50,6 +51,7 @@ impl Parser for TransientAssertAnchor {
                     }
                 },
             },
+
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 // seems the test is malformed, look for more tests
                 expected_assert(
@@ -57,8 +59,33 @@ impl Parser for TransientAssertAnchor {
                     "expected an assertion after the name, but found `;`",
                     target,
                 );
-                ParseRule::Body(self.parent)
+                self.parent.continuation()
             }
+
+            TokenTree::Literal(literal) => {
+                match literal.as_string_literal() {
+                    Ok(name) => {
+                        // Looks like the user tried to nest a named test inside a named assertion
+                        expected_assert(
+                            &literal,
+                            format!(
+                                "found `{}` which looks like a test defintion. Tests cannot be nested inside asserts.",
+                                literal
+                            ),
+                            target,
+                        );
+                        parse::TransientBodyNamed::new(self.parent, Name::new(&literal, name))
+                            .consumed_token()
+                    }
+                    Err(_) => {
+                        let found = literal.to_string();
+                        expected_assert(&literal, format!("found `{}`", found), target);
+
+                        parse::TransientAssertError::new(self.parent).consumed_token()
+                    }
+                }
+            }
+
             other => {
                 let found = other.to_string();
                 expected_assert(&other, format!("found `{}`", found), target);
@@ -71,15 +98,15 @@ impl Parser for TransientAssertAnchor {
     fn end_of_group(self, target: &mut SuiteGenerator) -> ParseRule {
         target.push_new_error(
             &self.anchor,
-            "RULE::TransientAssertAnchor: reached end of group input before reaching the end of the assertion definition",
+            "reached end of group input before reaching the end of the assertion definition",
         );
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {
         target.push_new_error(
             &self.anchor,
-            "RULE::TransientAssertAnchor: reached end of input before reaching the end of the assertion definition",
+            "reached end of input before reaching the end of the assertion definition",
         );
     }
 }
@@ -92,7 +119,7 @@ fn expected_assert(
     target.push_new_error(
         location,
         format!(
-            "RULE::TransientAssertAnchor: expected a valid assertion type [{}] following the dollars, but {}",
+            "expected a valid assertion type [{}] following the dollars, but {}",
             Dollars::list(),
             err.into()
         ),
@@ -130,11 +157,11 @@ impl TransientAssertAnchor {
 }
 
 pub(crate) struct TransientAssertError {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
 }
 
 impl TransientAssertError {
-    fn new(parent: parse::Body) -> Self {
+    fn new(parent: parse::AnchorParent) -> Self {
         Self { parent }
     }
 }
@@ -144,7 +171,7 @@ impl Parser for TransientAssertError {
         match token {
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 // seems the test is malformed, look for more tests
-                ParseRule::Body(self.parent)
+                self.parent.continuation()
             }
 
             _ => self.consumed_token(),
@@ -154,16 +181,16 @@ impl Parser for TransientAssertError {
     fn end_of_group(self, target: &mut SuiteGenerator) -> ParseRule {
         target.push_new_error(
             &Span::call_site(),
-            "RULE::TransientAssertError: reached end of group input before reaching the end of the assertion definition",
+            "reached end of group input before reaching the end of the assertion definition",
         );
 
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(self, target: &mut SuiteGenerator) {
         target.push_new_error(
             &Span::call_site(),
-            "RULE::TransientAssertError: reached end of input before reaching the end of the assertion definition",
+            "reached end of input before reaching the end of the assertion definition",
         );
     }
 }

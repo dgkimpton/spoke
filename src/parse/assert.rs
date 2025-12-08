@@ -1,12 +1,16 @@
 use crate::{code_block::CodeBlock, name::*, parse, parser::*, token_helpers::*};
 
 pub(crate) struct Assert {
-    parent: parse::Body,
+    parent: parse::AnchorParent,
     name: Name,
     left_code: CodeBlock,
 }
 impl Assert {
-    pub(crate) fn new(parent: parse::Body, name: Name) -> Self {
+    pub(crate) fn from_suite(parent: parse::Suite, name: Name) -> Self {
+        Self::new(parse::AnchorParent::from_suite(parent), name)
+    }
+
+    pub(crate) fn new(parent: parse::AnchorParent, name: Name) -> Self {
         Self {
             parent,
             name,
@@ -40,19 +44,19 @@ impl Parser for Assert {
         match token {
             TokenTree::Punct(punct) if punct.as_char() == '$' => {
                 parse::TransientAssertAnchor::new(self.parent, self.name, self.left_code, &punct)
-                    .consumed_token()
+                     .consumed_token()
             }
 
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 if self.left_code.is_empty() {
                     target.push_new_error(
                         &self.name,
-                        "RULE::Assert: expected an assertion after the name, but found `;`",
+                        "expected an assertion or test body after the name, but found `;`",
                     );
                 } else {
                     self.generate_assert_test_into(target);
                 }
-                self.parent.consumed_token()
+                self.parent.continuation()
             }
 
             other => {
@@ -65,18 +69,18 @@ impl Parser for Assert {
     fn end_of_group(mut self, target: &mut SuiteGenerator) -> ParseRule {
         target.push_new_error(
             &self.name.span(),
-            "RULE::ASSERT: reached end of group input before finding deails of the named assertion. Missing ; ?",
+            "reached end of group input before finding details of the named assertion. Missing ; ?",
         );
 
         self.generate_assert_test_into(target);
 
-        ParseRule::Body(self.parent)
+        self.parent.continuation()
     }
 
     fn end_of_stream(mut self, target: &mut SuiteGenerator) {
         target.push_new_error(
             &self.name.span(),
-            "RULE::ASSERT: reached end of input before finding deails of the named assertion. Missing ; ?",
+            "reached end of input before finding details of the named assertion. Missing ; ?",
         );
         self.generate_assert_test_into(target);
     }

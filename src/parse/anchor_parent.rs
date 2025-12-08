@@ -5,6 +5,12 @@ pub(crate) enum AnchorParent {
     Body(Box<parse::Body>),
 }
 impl AnchorParent {
+    pub(crate) fn from_body(body:parse::Body) -> Self {
+        Self::Body(Box::new(body))
+    }
+    pub(crate) fn from_suite(suite:parse::Suite) -> Self {
+        Self::Suite(suite)
+    }
     pub(crate) fn continuation(self) -> ParseRule {
         match self {
             AnchorParent::Suite(suite) => ParseRule::Suite(suite),

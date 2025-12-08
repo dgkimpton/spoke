@@ -1,1 +1,1 @@
-RUST_BACKTRACE=1 cargo watch -x 'llvm-cov --ignore-filename-regex src/lib.rs --lcov --output-path ./target/lcov.info ' -w src
+RUST_BACKTRACE=1 cargo watch -x "llvm-cov --ignore-filename-regex='(src/lib.rs)|(unit_tests/.*)' --lcov --output-path=./target/lcov.info " -w src
