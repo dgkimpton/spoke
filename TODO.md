@@ -82,11 +82,12 @@ Rust testing macros allow for a custom message on error, *Spoke::test!* plans to
 $"no items in cart" basket.is_empty() $onfail "the cart still had {} items in it", basket.len();
 ```
 
-## Ignoring and Pendin tests
+## Ignoring and Pending tests
 Rust can ignore tests and *Spoke::test!* plans to be able to too
 
 ```rust
 $ignore "no items in cart" basket.is_empty();
+$ignore."reason" "no items in cart" basket.is_empty();
 ```
 
 Some testing frameworks also support quarantining failing tests which will then appear as if they pass until such time as they genuinely pass at which point they will fail.  This lets users ingore them but with the bonus that when the pass they are prompted to clean up the failure expectation.
@@ -99,7 +100,7 @@ The planned syntax for allowing this approach is
 
 ```rust
 $pending "no items in cart" basket.is_empty();
-$pending(feature_name) "no items in cart" basket.is_empty();
+$pending.feature_name "no items in cart" basket.is_empty();
 ```
 
 This requires some manual editing of the cargo.toml so it's still in the ideation phase.
