@@ -73,8 +73,4 @@ impl_rule!(
     TransientAssertAnchor,
     TransientAssertError,
     AssertEq,
-    // AssertOperand,
-    // AssertOperandWithError,
-    // AssertOperationEq,
-    // AssertRight,
 );

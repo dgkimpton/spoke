@@ -27,7 +27,7 @@ mod token_helpers;
 ///
 ///         let mut v = Vec::<u8>::new();
 ///
-///         //todo: $"starts empty" v.is_empty() $is_true;
+///         $"starts empty" v.is_empty();
 ///         $"has length zero" v.len() $eq 0;
 ///         $"returns nothing if popped" v.pop() $eq None;
 ///
@@ -35,7 +35,7 @@ mod token_helpers;
 ///
 ///             v.push(8);
 ///
-///             //todo: $"is no longer empty" v.empty() $is_false;
+///             $"is no longer empty" !v.empty();
 ///             $"has length one" v.len() $eq 1;
 ///             $"returns the item when popped" v.pop() $eq Some(8);
 ///         }
@@ -49,43 +49,43 @@ mod token_helpers;
 /// as an example the above snippet produces:
 ///
 /// ```
-/// #[cfg(test)]
-/// #[allow(unused_mut)]
-/// #[allow(unused_variables)]
-/// mod spoke_tests {
-///     #[test]
-///     fn a_vector_starts_empty() {
-///         let mut v = Vec::<u8>::new();
-///         assert!(v.is_empty());
-///     }
-///     #[test]
-///     fn a_vector_has_length_zero() {
-///         let mut v = Vec::<u8>::new();
-///         assert_eq!(v.len(), 0);
-///     }
-///     #[test]
-///     fn a_vector_returns_nothing_if_popped() {
-///         let mut v = Vec::<u8>::new();
-///         assert_eq!(v.pop(), None);
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_is_no_longer_empty() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert!(!(v.is_empty()));
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_has_length_one() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert_eq!(v.len(), 1);
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_returns_the_item_when_popped() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert_eq!(v.pop(), Some(8));
-///     }
+///#[cfg(test)]
+///#[allow(unused_mut)]
+///#[allow(unused_variables)]
+///mod spoketest {
+///    #[test]
+///    fn a_vector_starts_empty(){
+///        let mut v = Vec::<u8>::new();
+///        assert!(v.is_empty());
+///    }
+///    #[test]
+///    fn a_vector_has_length_zero(){
+///        let mut v = Vec::<u8>::new();
+///        assert_eq!(v.len(),0);
+///    }
+///    #[test]
+///    fn a_vector_returns_nothing_if_popped(){
+///        let mut v = Vec::<u8>::new();
+///        assert_eq!(v.pop(),None);
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_is_no_longer_empty(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert!(!v.empty());
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_has_length_one(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert_eq!(v.len(),1);
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_returns_the_item_when_popped(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert_eq!(v.pop(),Some(8));
+///    }
 /// }
 /// ```
 ///
@@ -96,11 +96,6 @@ mod token_helpers;
 /// Not every test needs to, or benefits from, being written with spoke, but for simple sequential tests it can help
 /// you get up and running quickly.
 ///
-///
-///
-/// spoke::test!{
-/// $;
-/// }
 #[proc_macro]
 pub fn test(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     crate::spoke::generate_tests(proc_macro2::TokenStream::from(input)).into()

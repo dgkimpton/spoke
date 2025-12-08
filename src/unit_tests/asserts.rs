@@ -34,6 +34,23 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn can_place_a_negative_assertion_instead_of_a_body() {
+        parse_valid(Input(
+            r##"
+                $"test" true $ne false;
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                #[test] 
+                fn inner_test() {
+                    assert_ne!(true, false);
+                }
+            "##,
+        ));
+    }
+
     fn parse_valid(input: Input) -> proc_macro2::TokenStream {
         let mut output = SuiteGenerator::new();
 

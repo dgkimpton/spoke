@@ -448,6 +448,9 @@ mod tests {
             .followed_by(&names[1])
             .followed_by(&names[2]);
 
-        assert_eq!("missing_name_missing_name_2_missing_name_3", name.function_name().0)
+        assert_eq!(
+            "missing_name_missing_name_2_missing_name_3",
+            name.function_name().0
+        )
     }
 }
