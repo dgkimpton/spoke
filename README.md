@@ -10,7 +10,9 @@ Human readable test case writing for Rust
 [![dependency status](https://deps.rs/repo/github/dgkimpton/spoke/status.svg)](https://deps.rs/repo/github/dgkimpton/spoke)
 
 > [!WARNING]  
-> This library is not yet production-ready - feedback and suggestions welcomed
+> This library is not yet production-ready.
+> 
+> Feedback and suggestions welcomed
 
 <br>
 
@@ -271,6 +273,8 @@ There are currently no optional features.
 
 ## Known Issues
 Due to limitations of the proc-macro (and proc-macro2) libraries on stable some of the compile errors are highlighted against a single token when they realistically apply to multiple tokens. Improvements can be made here when the proc_macro_span feature stabilises.
+
+If any test in a spoke requires the variable to be mutable it must be mutable for all. This can sometimes cause issues. The workaround is to split up the branches which can mean undesired duplication. Until such time as we get proper reflection I don't have a perfect solution for this (ideally the test would just drop unused mutability based on compiler feedback).
 
 ### Missing features (planned)
 Currently the following features of standard Rust tests are planned but as yet unavailable.

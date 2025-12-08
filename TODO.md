@@ -119,5 +119,20 @@ $$ basket.is_empty();
 $"the basket is empty" basket.is_empty();
 ```
 
+## Escape Hatches
+Currently the *Spoke::test!* generated module is always called `spoketest`, very occasionally it might be needed to change this. There should be a syntax that allows for that.
+
+Also, *Spoke::test!* gnerally pulls in `super::*` automatically which isn't to everyone's taste, there should be an option to avoid this.
+
+Proposed syntax is to use a `$config` action in the pre-amble.
+
+```rust
+spoke::test!{
+    $config( module = mymod, super = off );
+
+    $"result is true" true;
+}
+```
+
 ## Assert2 Support
 Eventually I'd like to add an optional feature to use [Assert2](https://github.com/de-vri-es/assert2-rs) instead of the standard `assert!` macro.
