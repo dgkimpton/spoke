@@ -43,13 +43,13 @@ impl Parser for TransientBodyAnchor {
                 ),
             parse::MatchResult::InvalidDollars(dollars) => self.expected_name(
                     token,
-                    format!("found a badly formatted assertion '{}' which isn't  allowed inside the braced body of a test and should be lowercase", dollars),
+                    format!("found a badly formatted assertion '{}' which isn't allowed inside the braced body of a test and should be lowercase", dollars),
                     target
                 ),
             parse::MatchResult::OtherInvalid(found) => self.expected_name(token, format!("but found {}", found), target),
             parse::MatchResult::SemiColon => self.expected_name(
                     token,
-                    "truncated assertion - found `;` before any code was provided",
+                    "found a truncated assertion - found `;` before any code was provided",
                     target
                 ),
         }
@@ -86,7 +86,7 @@ impl Parser for TransientBodyNamed {
     fn accept_token(self, token: TokenTree, target: &mut SuiteGenerator) -> ParseRule {
         match token {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
-                parse::Body::new(self.parent, self.name, group, target)
+                parse::Body::generate_body(self.parent, self.name, group, target)
             }
 
             token_tree => {
@@ -129,7 +129,7 @@ impl Parser for TransientBodyNamingError {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
                 // assume this is probably the body of the test
 
-                parse::Body::new(self.parent, self.name, group, target)
+                parse::Body::generate_body(self.parent, self.name, group, target)
             }
 
             TokenTree::Punct(punct) if punct.as_char() == ';' => {

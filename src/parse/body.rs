@@ -8,30 +8,33 @@ pub(crate) struct Body {
 }
 
 impl Body {
-    pub(crate) fn from_suite(
+    pub(crate) fn generate_body_in_suite(
         parent: parse::Suite,
         name: Name,
         group: Group,
         target: &mut SuiteGenerator,
     ) -> ParseRule {
-        Self::new(parse::AnchorParent::from_suite(parent), name, group, target)
+        Self::generate_body(parse::AnchorParent::from_suite(parent), name, group, target)
     }
 
-    pub(crate) fn new(
+    pub(crate) fn generate_body(
         parent: parse::AnchorParent,
         name: Name,
         group: Group,
         target: &mut SuiteGenerator,
     ) -> ParseRule {
-        group.process_into(
-            ParseRule::Body(Self {
-                parent,
-                name,
-                code: CodeBlock::new(),
-                has_children: false,
-            }),
-            target,
-        )
+        let mut current_rule = ParseRule::Body(Self {
+            parent,
+            name,
+            code: CodeBlock::new(),
+            has_children: false,
+        });
+
+        for token in group.stream().into_iter() {
+            current_rule = current_rule.accept_token(token, target);
+        }
+
+        current_rule.end_of_group(target)
     }
 
     fn generate_test(&self, target: &mut SuiteGenerator) {
@@ -48,7 +51,8 @@ impl Parser for Body {
         match token {
             TokenTree::Punct(punct) if punct.as_char() == '$' => {
                 self.has_children = true;
-                parse::TransientBodyAnchor::new(parse::AnchorParent::from_body(self), &punct).consumed_token()
+                parse::TransientBodyAnchor::new(parse::AnchorParent::from_body(self), &punct)
+                    .consumed_token()
             }
 
             other => {

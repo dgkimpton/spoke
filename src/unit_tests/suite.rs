@@ -367,11 +367,45 @@ mod error_tests {
                 #[allow (unused_mut)]
                 #[allow (unused_variables)] 
                 mod spoketest {
-                    compile_error!("reached end of input before finding details of the named assertion. Missing ; ?"); 
-                    #[test]
-                    fn hello () {
-                        assert!(#);
-                    }
+                    compile_error!("reached end of input before finding details of the named assertion. Missing ; ?");
+                }
+            "###,
+        ));
+    }
+
+    #[test]
+    fn name_cannot_be_an_known_assertion() {
+        parsing(Input(
+            r##"
+               $eq;
+            "##,
+        ))
+        .matches(Expected(
+            r###"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found an assertion 'eq' which isn't allowed as a top level test");
+                }
+            "###,
+        ));
+    }
+
+    #[test]
+    fn name_cannot_be_an_known_assertion_even_with_the_wrong_casse() {
+        parsing(Input(
+            r##"
+               $EQ;
+            "##,
+        ))
+        .matches(Expected(
+            r###"
+                #[cfg(test)]
+                #[allow (unused_mut)]
+                #[allow (unused_variables)] 
+                mod spoketest {
+                    compile_error!("expected a valid test case name in quotes following the dollars, but found a badly formatted assertion 'eq' which isn't allowed as a top level test and should be lowercase");
                 }
             "###,
         ));

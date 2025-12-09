@@ -66,22 +66,19 @@ impl Parser for Assert {
         }
     }
 
-    fn end_of_group(mut self, target: &mut SuiteGenerator) -> ParseRule {
+    fn end_of_group(self, target: &mut SuiteGenerator) -> ParseRule {
         target.push_new_error(
             &self.name.span(),
             "reached end of group input before finding details of the named assertion. Missing ; ?",
         );
 
-        self.generate_assert_test_into(target);
-
         self.parent.continuation()
     }
 
-    fn end_of_stream(mut self, target: &mut SuiteGenerator) {
+    fn end_of_stream(self, target: &mut SuiteGenerator) {
         target.push_new_error(
             &self.name.span(),
             "reached end of input before finding details of the named assertion. Missing ; ?",
         );
-        self.generate_assert_test_into(target);
     }
 }

@@ -86,7 +86,7 @@ impl Parser for TransientSuiteNamed {
     fn accept_token(self, token: TokenTree, target: &mut SuiteGenerator) -> ParseRule {
         match token {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
-                parse::Body::from_suite(self.parent, self.name, group, target)
+                parse::Body::generate_body_in_suite(self.parent, self.name, group, target)
             }
 
             token_tree => {
@@ -129,7 +129,7 @@ impl Parser for TransientSuiteNamingError {
             TokenTree::Group(group) if group.delimiter() == Delimiter::Brace => {
                 // assume this is probably the body of the test
 
-                parse::Body::from_suite(self.parent, self.name, group, target)
+                parse::Body::generate_body_in_suite(self.parent, self.name, group, target)
             }
 
             TokenTree::Punct(punct) if punct.as_char() == ';' => {

@@ -203,6 +203,92 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn running_out_of_input_in_a_test_is_an_error() {
+        parse_valid(Input(
+            r##"
+                $"test"
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("reached end of group input before finding the test body for named test");
+            "##,
+        ));
+    }
+
+    #[test]
+    fn an_identifier_is_not_a_valid_test_name() {
+        parse_valid(Input(
+            r##"
+                $test
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("expected a valid test name following the dollars, but but found test");
+                compile_error!("reached end of group input before reaching the end of the test definition");
+            "##,
+        ));
+    }
+
+    #[test]
+    fn an_symbol_is_not_a_valid_test_name() {
+        parse_valid(Input(
+            r##"
+                $#
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("expected a valid test name following the dollars, but but found #");
+                compile_error!("reached end of group input before reaching the end of the test definition");
+            "##,
+        ));
+    }
+
+    #[test]
+    fn an_group_is_not_a_valid_test_name_is_assumed_to_be_a_missing_name() {
+        parse_valid(Input(
+            r##"
+                ${}
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("expected a valid test name following the dollars, but but found { }");
+                # [test] fn a_test_missing_name () { }
+            "##,
+        ));
+    }
+
+    #[test]
+    fn an_semicolon_is_not_a_valid_test_name() {
+        parse_valid(Input(
+            r##"
+                $;
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("expected a valid test name following the dollars, but found a truncated assertion - found `;` before any code was provided");
+            "##,
+        ));
+    }
+    #[test]
+    fn running_out_of_input_before_the_name_is_an_error() {
+        parse_valid(Input(
+            r##"
+                $
+            "##,
+        ))
+        .matches_inside::<SuiteStructure>(Expected(
+            r##"
+                compile_error!("reached end of group input before reaching the end of the test definition");
+            "##,
+        ));
+    }
+
     fn parse_valid(input: Input) -> proc_macro2::TokenStream {
         let mut output = SuiteGenerator::new();
 
@@ -213,7 +299,7 @@ mod tests {
             .expect("there should be valid input");
 
         match tok {
-            proc_macro2::TokenTree::Group(group) => parse::Body::from_suite(
+            proc_macro2::TokenTree::Group(group) => parse::Body::generate_body_in_suite(
                 parse::Suite(),
                 Name::new(&Span::call_site(), "a_test"),
                 group,

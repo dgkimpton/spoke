@@ -54,11 +54,7 @@ impl Parser for TransientAssertAnchor {
 
             TokenTree::Punct(punct) if punct.as_char() == ';' => {
                 // seems the test is malformed, look for more tests
-                expected_assert(
-                    &punct,
-                    "expected an assertion after the name, but found `;`",
-                    target,
-                );
+                expected_assert(&punct, "found `;`", target);
                 self.parent.continuation()
             }
 

@@ -5,15 +5,6 @@ pub(crate) trait FluidExtensions: Sized {
     fn forward_token(self, token: TokenTree, target: &mut SuiteGenerator) -> ParseRule;
 }
 
-impl FluidExtensions for ParseRule {
-    fn consumed_token(self) -> crate::parse_rule::ParseRule {
-        self
-    }
-    fn forward_token(self, token: TokenTree, target: &mut SuiteGenerator) -> ParseRule {
-        self.accept_token(token, target)
-    }
-}
-
 macro_rules! impl_rule {
     ($
         ($variant:ident),+ $(,)?
