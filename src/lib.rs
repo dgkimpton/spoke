@@ -1,11 +1,13 @@
-mod error;
-mod span_source;
-mod token_helpers;
+mod code_block;
+mod generator;
 mod name;
-mod suite;
-mod signature;
-mod body;
+mod parse;
+mod parse_rule;
+mod parser;
+mod span_source;
 mod spoke;
+mod string_lit;
+mod token_helpers;
 
 /// # spoke::test!
 ///
@@ -25,17 +27,17 @@ mod spoke;
 ///
 ///         let mut v = Vec::<u8>::new();
 ///
-///         //todo: $"starts empty" v.is_empty() $is_true;
-///         //todo: $"has length zero" v.len() $eq 0;
-///         //todo: $"returns nothing if popped" v.pop() $eq None;
+///         $"starts empty" v.is_empty();
+///         $"has length zero" v.len() $eq 0;
+///         $"returns nothing if popped" v.pop() $eq None;
 ///
 ///         $"when pushed to" {
 ///
 ///             v.push(8);
 ///
-///             //todo: $"is no longer empty" v.empty() $is_false;
-///             //todo: $"has length one" v.len() $eq 1;
-///             //todo: $"returns the item when popped" v.pop() $eq Some(8);
+///             $"is no longer empty" !v.empty();
+///             $"has length one" v.len() $eq 1;
+///             $"returns the item when popped" v.pop() $eq Some(8);
 ///         }
 ///     }
 /// }
@@ -47,43 +49,43 @@ mod spoke;
 /// as an example the above snippet produces:
 ///
 /// ```
-/// #[cfg(test)]
-/// #[allow(unused_mut)]
-/// #[allow(unused_variables)]
-/// mod spoke_tests {
-///     #[test]
-///     fn a_vector_starts_empty() {
-///         let mut v = Vec::<u8>::new();
-///         assert!(v.is_empty());
-///     }
-///     #[test]
-///     fn a_vector_has_length_zero() {
-///         let mut v = Vec::<u8>::new();
-///         assert_eq!(v.len(), 0);
-///     }
-///     #[test]
-///     fn a_vector_returns_nothing_if_popped() {
-///         let mut v = Vec::<u8>::new();
-///         assert_eq!(v.pop(), None);
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_is_no_longer_empty() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert!(!(v.is_empty()));
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_has_length_one() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert_eq!(v.len(), 1);
-///     }
-///     #[test]
-///     fn a_vector_when_pushed_to_returns_the_item_when_popped() {
-///         let mut v = Vec::<u8>::new();
-///         v.push(8);
-///         assert_eq!(v.pop(), Some(8));
-///     }
+///#[cfg(test)]
+///#[allow(unused_mut)]
+///#[allow(unused_variables)]
+///mod spoketest {
+///    #[test]
+///    fn a_vector_starts_empty(){
+///        let mut v = Vec::<u8>::new();
+///        assert!(v.is_empty());
+///    }
+///    #[test]
+///    fn a_vector_has_length_zero(){
+///        let mut v = Vec::<u8>::new();
+///        assert_eq!(v.len(),0);
+///    }
+///    #[test]
+///    fn a_vector_returns_nothing_if_popped(){
+///        let mut v = Vec::<u8>::new();
+///        assert_eq!(v.pop(),None);
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_is_no_longer_empty(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert!(!v.empty());
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_has_length_one(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert_eq!(v.len(),1);
+///    }
+///    #[test]
+///    fn a_vector_when_pushed_to_returns_the_item_when_popped(){
+///        let mut v = Vec::<u8>::new();
+///        v.push(8);
+///        assert_eq!(v.pop(),Some(8));
+///    }
 /// }
 /// ```
 ///

@@ -4,12 +4,8 @@ spoke::test! {
     $"a string" {
         let mut s = String::new();
         $"begins" {
-            $"empty" {
-                assert!(s.is_empty());
-            }
-            $"with zero size" {
-                assert_eq!(0, s.len());
-            }
+            $"empty" s.is_empty();
+            $"with zero size" 0 $eq s.len();
         }
     }
 }

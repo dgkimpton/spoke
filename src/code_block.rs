@@ -1,0 +1,1 @@
+pub(crate) type CodeBlock = Vec<proc_macro2::TokenTree>;
