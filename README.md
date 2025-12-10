@@ -29,7 +29,7 @@ The macro transforms the simplified syntax into standard Rust `#[test]` function
     <td>Coming soon</td>
 </tr>
 <tr>
-    <td>
+    <td valign="top">>
         <ul>
             <li>Simple syntax
             <li>Test names are strings (no underscores!)
@@ -39,7 +39,7 @@ The macro transforms the simplified syntax into standard Rust `#[test]` function
         </ul>
     </td>
     <td></td>
-    <td>These features are on the roadmap but not yet available:
+    <td valign="top">>These features are on the roadmap but not yet available:
         <ul>
             <li>Easy panic handling
             <li>Data based tests

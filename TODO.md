@@ -134,5 +134,75 @@ spoke::test!{
 }
 ```
 
+## Async Support
+The plan is to support Tokio async as the default option and use an escape hatch to customise for other runtimes. Since *Spoke::test!* is just a code generator it doesn't depending on Tokio, but if you use the default settings then your project will need to take a dependency on Tokio (or whichever other runtime you configure).
+
+A `$async` specifier can be wrapped around a section of the test tree and will then generate all tests inside that block with a suitable async test structure.
+
+```rust
+spoke::test!{
+    $"project" {
+        $async {
+            $"async tests inside the async block" true; 
+        }
+        $async(flavor = "multi_thread") {
+            $"async with options" true; 
+        }
+        $"non-async test" true;
+    }
+}
+
+// becomes
+#[tokio::test]
+async fn project_async_tests_inside_the_async_block() {
+    assert!(true);
+}
+
+#[tokio::test(flavour="multi_thread")]
+async fn project_async_with_options() {
+    assert!(true);
+}
+
+#[test]
+fn project_non_dash_async_test() {
+    assert!(true);
+}
+```
+
+By using the escape hatch the runtime can be changed
+
+```rust
+spoke::test!{
+    // $config( async=block_on{/*code necessary to create the rutime which must expose a block_on method*/} );
+    // or $config( async=derive=tokio::test ); //default
+    // or $config( async=derive=tokio::test(flavor = "multi_thread") );
+    // or $config( async=derive=my_rt::test )
+    // or $config( 
+    //  async=fn={
+    //      Builder::new_multi_thread()
+    //          .worker_threads(2)
+    //        .enable_all()
+    //          .build()
+    //          .expect("Failed to build multi-thread runtime")
+    //  }.block_on );
+    // or 
+    $config( async=fn=smol::block_on );
+
+    $async {
+        $"result is true" true;
+    }
+}
+
+// becomes
+fn result_is_true() {
+    smol::block_on(async {
+        assert!(true);
+    });
+}
+
+```
+
+
+
 ## Assert2 Support
 Eventually I'd like to add an optional feature to use [Assert2](https://github.com/de-vri-es/assert2-rs) instead of the standard `assert!` macro.
